@@ -1,0 +1,310 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import '../../models/bakery_ad.dart';
+import '../../models/iran_provinces.dart';
+import '../../theme/app_theme.dart';
+import '../../theme/app_buttons_style.dart';
+import '../../utils/currency_input_formatter.dart';
+import '../../utils/number_to_words.dart';
+import '../map/location_picker_screen.dart';
+
+class AddBakeryAdScreen extends StatefulWidget {
+  const AddBakeryAdScreen({super.key});
+
+  @override
+  State<AddBakeryAdScreen> createState() => _AddBakeryAdScreenState();
+}
+
+class _AddBakeryAdScreenState extends State<AddBakeryAdScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _titleController = TextEditingController();
+  final _descriptionController = TextEditingController();
+  final _salePriceController = TextEditingController();
+  final _rentDepositController = TextEditingController();
+  final _monthlyRentController = TextEditingController();
+  final _phoneController = TextEditingController();
+  BakeryAdType _selectedType = BakeryAdType.sale;
+  String? _selectedLocation;
+  String _salePriceWords = '';
+  String _rentDepositWords = '';
+  String _monthlyRentWords = '';
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descriptionController.dispose();
+    _salePriceController.dispose();
+    _rentDepositController.dispose();
+    _monthlyRentController.dispose();
+    _phoneController.dispose();
+    super.dispose();
+  }
+
+  void _submitAd() {
+    if (_formKey.currentState!.validate()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('آگهی با موفقیت ثبت شد'),
+          backgroundColor: AppTheme.primaryGreen,
+        ),
+      );
+      Navigator.pop(context);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: AppTheme.background,
+        appBar: AppBar(
+          title: Text('درج آگهی نانوایی'),
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
+        body: Form(
+          key: _formKey,
+          child: ListView(
+            padding: EdgeInsets.all(16),
+            children: [
+              // Type selector
+              Card(
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'نوع آگهی',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.textDark,
+                        ),
+                      ),
+                      SizedBox(height: 12),
+                      SegmentedButton<BakeryAdType>(
+                        segments: [
+                          ButtonSegment(
+                            value: BakeryAdType.sale,
+                            label: Text('فروش'),
+                            icon: Icon(Icons.sell),
+                          ),
+                          ButtonSegment(
+                            value: BakeryAdType.rent,
+                            label: Text('رهن و اجاره'),
+                            icon: Icon(Icons.key),
+                          ),
+                        ],
+                        selected: {_selectedType},
+                        onSelectionChanged: (Set<BakeryAdType> newSelection) {
+                          setState(() => _selectedType = newSelection.first);
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              SizedBox(height: 16),
+              // Title
+              TextFormField(
+                controller: _titleController,
+                decoration: InputDecoration(
+                  labelText: 'عنوان آگهی',
+                  hintText: 'مثال: فروش نانوایی بربری',
+                  prefixIcon: Icon(Icons.title, color: AppTheme.primaryGreen),
+                ),
+                validator: (v) =>
+                    v?.isEmpty ?? true ? 'عنوان را وارد کنید' : null,
+              ),
+              SizedBox(height: 16),
+
+              // Price fields based on type
+              if (_selectedType == BakeryAdType.sale) ...[
+                TextFormField(
+                  controller: _salePriceController,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    CurrencyInputFormatter(),
+                  ],
+                  decoration: InputDecoration(
+                    labelText: 'قیمت فروش (تومان)',
+                    hintText: '0',
+                    prefixIcon: Icon(Icons.attach_money, color: AppTheme.primaryGreen),
+                  ),
+                  onChanged: (value) {
+                    setState(() {
+                      _salePriceWords = NumberToWords.convert(value);
+                    });
+                  },
+                  validator: (v) =>
+                      v?.isEmpty ?? true ? 'قیمت را وارد کنید' : null,
+                ),
+                if (_salePriceWords.isNotEmpty)
+                  Padding(
+                    padding: EdgeInsets.only(top: 8, right: 16, bottom: 8),
+                    child: Text(
+                      _salePriceWords,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.primaryGreen,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+              ] else ...[
+                TextFormField(
+                  controller: _rentDepositController,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    CurrencyInputFormatter(),
+                  ],
+                  decoration: InputDecoration(
+                    labelText: 'رهن (تومان)',
+                    hintText: '0',
+                    prefixIcon: Icon(Icons.attach_money, color: AppTheme.primaryGreen),
+                  ),
+                  onChanged: (value) {
+                    setState(() {
+                      _rentDepositWords = NumberToWords.convert(value);
+                    });
+                  },
+                  validator: (v) =>
+                      v?.isEmpty ?? true ? 'رهن را وارد کنید' : null,
+                ),
+                if (_rentDepositWords.isNotEmpty)
+                  Padding(
+                    padding: EdgeInsets.only(top: 8, right: 16, bottom: 8),
+                    child: Text(
+                      _rentDepositWords,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.primaryGreen,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                SizedBox(height: 16),
+                TextFormField(
+                  controller: _monthlyRentController,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    CurrencyInputFormatter(),
+                  ],
+                  decoration: InputDecoration(
+                    labelText: 'اجاره ماهانه (تومان)',
+                    hintText: '0',
+                    prefixIcon: Icon(Icons.attach_money, color: AppTheme.primaryGreen),
+                  ),
+                  onChanged: (value) {
+                    setState(() {
+                      _monthlyRentWords = NumberToWords.convert(value);
+                    });
+                  },
+                  validator: (v) =>
+                      v?.isEmpty ?? true ? 'اجاره را وارد کنید' : null,
+                ),
+                if (_monthlyRentWords.isNotEmpty)
+                  Padding(
+                    padding: EdgeInsets.only(top: 8, right: 16, bottom: 8),
+                    child: Text(
+                      _monthlyRentWords,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.primaryGreen,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+              ],
+              SizedBox(height: 16),
+
+              // Location picker from map
+              TextFormField(
+                readOnly: true,
+                decoration: InputDecoration(
+                  labelText: 'محل',
+                  hintText: 'انتخاب از روی نقشه',
+                  prefixIcon: Icon(Icons.location_on, color: AppTheme.primaryGreen),
+                  suffixIcon: Icon(Icons.map, color: AppTheme.primaryGreen),
+                ),
+                controller: TextEditingController(text: _selectedLocation),
+                onTap: () async {
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => LocationPickerScreen(),
+                    ),
+                  );
+                  if (result != null && mounted) {
+                    setState(() {
+                      _selectedLocation = result.toString();
+                    });
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('موقعیت از نقشه انتخاب شد'),
+                        backgroundColor: AppTheme.primaryGreen,
+                      ),
+                    );
+                  }
+                },
+                validator: (v) => _selectedLocation == null ? 'محل را از روی نقشه انتخاب کنید' : null,
+              ),
+              SizedBox(height: 16),
+
+              // Phone number
+              TextFormField(
+                controller: _phoneController,
+                keyboardType: TextInputType.phone,
+                decoration: InputDecoration(
+                  labelText: 'شماره تماس',
+                  hintText: '09123456789',
+                  prefixIcon: Icon(Icons.phone, color: AppTheme.primaryGreen),
+                ),
+                validator: (v) {
+                  if (v?.isEmpty ?? true) return 'شماره تماس را وارد کنید';
+                  if (v!.length != 11) return 'شماره تماس باید 11 رقم باشد';
+                  return null;
+                },
+              ),
+              SizedBox(height: 16),
+
+              // Description
+              TextFormField(
+                controller: _descriptionController,
+                maxLines: 5,
+                decoration: InputDecoration(
+                  labelText: 'توضیحات',
+                  hintText: 'جزئیات نانوایی را شرح دهید...',
+                  prefixIcon: Icon(Icons.description, color: AppTheme.primaryGreen),
+                  alignLabelWithHint: true,
+                ),
+                validator: (v) =>
+                    v?.isEmpty ?? true ? 'توضیحات را وارد کنید' : null,
+              ),
+              SizedBox(height: 32),
+
+              // Submit button
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: _submitAd,
+                  style: AppButtonsStyle.primaryButton(verticalPadding: 18),
+                  child: Text('ثبت آگهی'),
+                ),
+              ),
+              SizedBox(height: 16),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
