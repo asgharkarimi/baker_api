@@ -4,7 +4,11 @@ import 'package:latlong2/latlong.dart';
 import '../../theme/app_theme.dart';
 
 class MapScreen extends StatefulWidget {
-  const MapScreen({super.key});
+  final double? lat;
+  final double? lng;
+  final String? title;
+
+  const MapScreen({super.key, this.lat, this.lng, this.title});
 
   @override
   State<MapScreen> createState() => _MapScreenState();
@@ -13,8 +17,19 @@ class MapScreen extends StatefulWidget {
 class _MapScreenState extends State<MapScreen> {
   final MapController _mapController = MapController();
   
-  // مختصات تهران
-  final LatLng _center = LatLng(35.6892, 51.3890);
+  late LatLng _center;
+  bool _showSingleLocation = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.lat != null && widget.lng != null) {
+      _center = LatLng(widget.lat!, widget.lng!);
+      _showSingleLocation = true;
+    } else {
+      _center = LatLng(35.6892, 51.3890);
+    }
+  }
   
   // نمونه مکان‌های نانوایی‌ها
   final List<BakeryLocation> _bakeries = [
@@ -41,12 +56,12 @@ class _MapScreenState extends State<MapScreen> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(
-          title: Text('نقشه نانوایی‌ها'),
+          title: Text(_showSingleLocation ? (widget.title ?? 'موقعیت') : 'نقشه نانوایی‌ها'),
           actions: [
             IconButton(
               icon: Icon(Icons.my_location),
               onPressed: () {
-                _mapController.move(_center, 13.0);
+                _mapController.move(_center, 15.0);
               },
             ),
           ],
@@ -55,16 +70,29 @@ class _MapScreenState extends State<MapScreen> {
           mapController: _mapController,
           options: MapOptions(
             initialCenter: _center,
-            initialZoom: 13.0,
+            initialZoom: _showSingleLocation ? 15.0 : 13.0,
             minZoom: 5.0,
             maxZoom: 18.0,
           ),
           children: [
             TileLayer(
-              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              urlTemplate: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+              subdomains: const ['a', 'b', 'c', 'd'],
               userAgentPackageName: 'com.example.my_bakers_jobapp',
             ),
-            MarkerLayer(
+            if (_showSingleLocation)
+              MarkerLayer(
+                markers: [
+                  Marker(
+                    point: _center,
+                    width: 50,
+                    height: 50,
+                    child: const Icon(Icons.location_pin, size: 50, color: Colors.red),
+                  ),
+                ],
+              )
+            else
+              MarkerLayer(
               markers: _bakeries.map((bakery) {
                 return Marker(
                   point: bakery.position,
@@ -81,7 +109,7 @@ class _MapScreenState extends State<MapScreen> {
                         border: Border.all(color: Colors.white, width: 2),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.3),
+                            color: Colors.black.withValues(alpha: 0.3),
                             blurRadius: 4,
                             offset: Offset(0, 2),
                           ),

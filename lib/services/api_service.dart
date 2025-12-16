@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/job_ad.dart';
 import '../models/job_seeker.dart';
 import '../models/bakery_ad.dart';
+import '../models/equipment_ad.dart';
 
 class ApiService {
   // برای تست روی امولاتور اندروید از 10.0.2.2 استفاده کن
@@ -293,6 +294,11 @@ class ApiService {
     BakeryAdType? type,
     String? location,
     String? search,
+    String? province,
+    int? minPrice,
+    int? maxPrice,
+    int? minFlourQuota,
+    int? maxFlourQuota,
     int page = 1,
   }) async {
     try {
@@ -301,17 +307,27 @@ class ApiService {
         if (type != null) 'type': type == BakeryAdType.sale ? 'sale' : 'rent',
         if (location != null) 'location': location,
         if (search != null) 'search': search,
+        if (province != null) 'province': province,
+        if (minPrice != null) 'minPrice': minPrice.toString(),
+        if (maxPrice != null) 'maxPrice': maxPrice.toString(),
+        if (minFlourQuota != null) 'minFlourQuota': minFlourQuota.toString(),
+        if (maxFlourQuota != null) 'maxFlourQuota': maxFlourQuota.toString(),
       };
       
       final uri = Uri.parse('$baseUrl/bakery-ads').replace(queryParameters: params);
+      debugPrint('📥 Fetching bakery ads from: $uri');
       final response = await http.get(uri);
+      debugPrint('📥 Bakery ads response: ${response.body}');
       final data = jsonDecode(response.body);
       
       if (data['success'] == true) {
-        return (data['data'] as List).map((json) => BakeryAd.fromJson(json)).toList();
+        final ads = (data['data'] as List).map((json) => BakeryAd.fromJson(json)).toList();
+        debugPrint('📥 Parsed ${ads.length} bakery ads');
+        return ads;
       }
       return [];
     } catch (e) {
+      debugPrint('❌ Error fetching bakery ads: $e');
       return [];
     }
   }
@@ -328,6 +344,24 @@ class ApiService {
       return data['success'] == true;
     } catch (e) {
       return false;
+    }
+  }
+
+  static Future<List<BakeryAd>> getMyBakeryAds() async {
+    await _loadToken();
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/bakery-ads/my/list'),
+        headers: _headers,
+      );
+      final data = jsonDecode(response.body);
+      
+      if (data['success'] == true) {
+        return (data['data'] as List).map((json) => BakeryAd.fromJson(json)).toList();
+      }
+      return [];
+    } catch (e) {
+      return [];
     }
   }
 
@@ -372,6 +406,24 @@ class ApiService {
       return data['success'] == true;
     } catch (e) {
       return false;
+    }
+  }
+
+  static Future<List<EquipmentAd>> getMyEquipmentAds() async {
+    await _loadToken();
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/equipment-ads/my/list'),
+        headers: _headers,
+      );
+      final data = jsonDecode(response.body);
+      
+      if (data['success'] == true) {
+        return (data['data'] as List).map((json) => EquipmentAd.fromJson(json)).toList();
+      }
+      return [];
+    } catch (e) {
+      return [];
     }
   }
 
@@ -649,6 +701,43 @@ class ApiService {
       return null;
     } catch (_) {
       return null;
+    }
+  }
+
+  // ==================== Helper ====================
+  
+  // ==================== Delete Ads ====================
+  
+  static Future<bool> deleteAd(String type, String id) async {
+    await _loadToken();
+    try {
+      String endpoint;
+      switch (type) {
+        case 'job-ad':
+          endpoint = 'job-ads';
+          break;
+        case 'job-seeker':
+          endpoint = 'job-seekers';
+          break;
+        case 'bakery-ad':
+          endpoint = 'bakery-ads';
+          break;
+        case 'equipment-ad':
+          endpoint = 'equipment-ads';
+          break;
+        default:
+          return false;
+      }
+      
+      final response = await http.delete(
+        Uri.parse('$baseUrl/$endpoint/$id'),
+        headers: _headers,
+      );
+      final data = jsonDecode(response.body);
+      return data['success'] == true;
+    } catch (e) {
+      debugPrint('❌ Error deleting ad: $e');
+      return false;
     }
   }
 

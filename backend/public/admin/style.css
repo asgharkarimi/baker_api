@@ -333,3 +333,247 @@ tr:hover { background: #f8f9fa; }
   .sidebar nav { display: flex; flex-wrap: wrap; padding: 10px; }
   .sidebar nav a { padding: 8px 12px; font-size: 14px; }
 }
+
+
+/* Dashboard Sections */
+.pending-section,
+.today-section,
+.location-section,
+.charts-section {
+  margin-bottom: 30px;
+}
+
+.pending-section h3,
+.today-section h3,
+.location-section h3,
+.charts-section h3 {
+  color: #2c3e50;
+  margin-bottom: 16px;
+  font-size: 18px;
+}
+
+/* Pending Grid */
+.pending-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.pending-card {
+  background: linear-gradient(135deg, #fff3cd 0%, #ffeeba 100%);
+  padding: 20px;
+  border-radius: 12px;
+  text-align: center;
+  border-right: 4px solid #ffc107;
+}
+
+.pending-card .value {
+  font-size: 28px;
+  font-weight: bold;
+  color: #856404;
+}
+
+.pending-card .label {
+  color: #856404;
+  margin-top: 8px;
+}
+
+/* Today Grid */
+.today-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 16px;
+}
+
+.today-card {
+  background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+  padding: 16px;
+  border-radius: 12px;
+  text-align: center;
+  border-right: 4px solid #28a745;
+}
+
+.today-card .value {
+  font-size: 24px;
+  font-weight: bold;
+  color: #155724;
+}
+
+.today-card .label {
+  color: #155724;
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+/* Weekly Chart */
+.weekly-chart {
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.chart-bars {
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-end;
+  height: 200px;
+  padding: 20px 0;
+  border-bottom: 2px solid #eee;
+}
+
+.chart-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+}
+
+.bar-group {
+  display: flex;
+  gap: 4px;
+  align-items: flex-end;
+  height: 150px;
+}
+
+.bar {
+  width: 20px;
+  border-radius: 4px 4px 0 0;
+  transition: height 0.5s ease;
+}
+
+.bar-users { background: #3498db; }
+.bar-jobs { background: #27ae60; }
+.bar-seekers { background: #e74c3c; }
+
+.bar-label {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #666;
+}
+
+.chart-legend {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  margin-top: 16px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.legend-color {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+}
+
+/* Location Grid */
+.location-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.location-card {
+  background: white;
+  padding: 16px;
+  border-radius: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.location-card .name {
+  font-weight: 500;
+  color: #2c3e50;
+}
+
+.location-card .count {
+  background: #8B4513;
+  color: white;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+}
+
+/* Recent Section */
+.recent-section {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.recent-box {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.recent-box h3 {
+  color: #2c3e50;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #eee;
+}
+
+.recent-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.recent-item:last-child { border-bottom: none; }
+
+.recent-item .info {
+  display: flex;
+  flex-direction: column;
+}
+
+.recent-item .name {
+  font-weight: 500;
+  color: #2c3e50;
+}
+
+.recent-item .sub {
+  font-size: 12px;
+  color: #999;
+}
+
+.recent-item .time {
+  font-size: 12px;
+  color: #8B4513;
+}
+
+/* Online Badge */
+.online-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #d4edda;
+  color: #155724;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+}
+
+.online-dot {
+  width: 8px;
+  height: 8px;
+  background: #28a745;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}

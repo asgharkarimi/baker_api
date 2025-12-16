@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/equipment_ad.dart';
 import '../../models/bakery_ad.dart';
+import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/number_formatter.dart';
 import '../../widgets/add_menu_fab.dart';
@@ -18,135 +19,68 @@ class MarketplaceScreen extends StatefulWidget {
 class _MarketplaceScreenState extends State<MarketplaceScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  String _fabLabel = 'افزودن آگهی';
-
-  final List<EquipmentAd> _sampleEquipmentAds = [
-    EquipmentAd(
-      id: '1',
-      title: 'دستگاه ربات نانوایی',
-      description: 'دستگاه ربات نانوایی در حد نو، کارکرد کم',
-      price: 50000000,
-      location: 'تهران',
-      phoneNumber: '09121234567',
-      images: [],
-      videos: [],
-      createdAt: DateTime.now(),
-    ),
-    EquipmentAd(
-      id: '2',
-      title: 'دستگاه چونه گیر اتوماتیک',
-      description: 'دستگاه چونه گیر تمام اتوماتیک، مدل جدید، با گارانتی',
-      price: 35000000,
-      location: 'اصفهان',
-      phoneNumber: '09131234567',
-      images: [],
-      videos: [],
-      createdAt: DateTime.now().subtract(Duration(days: 1)),
-    ),
-    EquipmentAd(
-      id: '3',
-      title: 'تنور گازی صنعتی',
-      description: 'تنور گازی 4 شعله، مناسب نانوایی بربری',
-      price: 25000000,
-      location: 'مشهد',
-      phoneNumber: '09151234567',
-      images: [],
-      videos: [],
-      createdAt: DateTime.now().subtract(Duration(days: 2)),
-    ),
-    EquipmentAd(
-      id: '4',
-      title: 'دستگاه خمیرگیر صنعتی',
-      description: 'خمیرگیر 50 کیلویی، کارکرد 2 سال، سالم و تمیز',
-      price: 18000000,
-      location: 'شیراز',
-      phoneNumber: '09171234567',
-      images: [],
-      videos: [],
-      createdAt: DateTime.now().subtract(Duration(days: 3)),
-    ),
-    EquipmentAd(
-      id: '5',
-      title: 'دستگاه پخت لواش',
-      description: 'دستگاه پخت لواش اتوماتیک، مدل 2023، فوری فروش',
-      price: 45000000,
-      location: 'کرج',
-      phoneNumber: '09121234568',
-      images: [],
-      videos: [],
-      createdAt: DateTime.now().subtract(Duration(days: 4)),
-    ),
-  ];
-
-  final List<BakeryAd> _sampleBakeryAds = [
-    BakeryAd(
-      id: '1',
-      title: 'فروش نانوایی بربری',
-      description: 'فروش سه دانگ نانوایی بربری با ملکیت به متراژ 48 متر',
-      type: BakeryAdType.sale,
-      salePrice: 500000000,
-      location: 'تهران، امام زاده حسن',
-      phoneNumber: '09103563267',
-      images: [],
-      createdAt: DateTime.now(),
-    ),
-    BakeryAd(
-      id: '2',
-      title: 'رهن و اجاره نانوایی',
-      description: 'آرد یارانه ای نوع 6، جای خواب و سرویس، دارای مجوز دو نوع نان',
-      type: BakeryAdType.rent,
-      rentDeposit: 50000000,
-      monthlyRent: 15000000,
-      location: 'قم، جعفریه',
-      phoneNumber: '09124521803',
-      images: [],
-      createdAt: DateTime.now(),
-    ),
-    BakeryAd(
-      id: '3',
-      title: 'فروش نانوایی لواش',
-      description: 'نانوایی لواش با تجهیزات کامل، موقعیت عالی، مشتری ثابت',
-      type: BakeryAdType.sale,
-      salePrice: 350000000,
-      location: 'اصفهان، خیابان باهنر',
-      phoneNumber: '09131234567',
-      images: [],
-      createdAt: DateTime.now().subtract(Duration(days: 1)),
-    ),
-    BakeryAd(
-      id: '4',
-      title: 'اجاره نانوایی بربری',
-      description: 'نانوایی آماده کار، دستگاه ربات، آرد یارانه نوع 2',
-      type: BakeryAdType.rent,
-      rentDeposit: 80000000,
-      monthlyRent: 20000000,
-      location: 'مشهد، احمدآباد',
-      phoneNumber: '09151234567',
-      images: [],
-      createdAt: DateTime.now().subtract(Duration(days: 2)),
-    ),
-    BakeryAd(
-      id: '5',
-      title: 'فروش فوری نانوایی',
-      description: 'نانوایی بربری، 60 متر، با ملک، فروش فوری به دلیل مهاجرت',
-      type: BakeryAdType.sale,
-      salePrice: 450000000,
-      location: 'شیراز، ستارخان',
-      phoneNumber: '09171234567',
-      images: [],
-      createdAt: DateTime.now().subtract(Duration(days: 3)),
-    ),
+  
+  List<EquipmentAd> _equipmentAds = [];
+  List<BakeryAd> _bakeryAds = [];
+  bool _isLoadingEquipment = true;
+  bool _isLoadingBakery = true;
+  
+  // فیلترها
+  String? _selectedProvince;
+  BakeryAdType? _selectedType;
+  RangeValues _priceRange = const RangeValues(0, 50000000000);
+  RangeValues _flourQuotaRange = const RangeValues(0, 1000);
+  bool _filtersApplied = false;
+  
+  final List<String> _provinces = [
+    'تهران', 'اصفهان', 'فارس', 'خراسان رضوی', 'آذربایجان شرقی',
+    'مازندران', 'خوزستان', 'گیلان', 'کرمان', 'آذربایجان غربی',
+    'سیستان و بلوچستان', 'کرمانشاه', 'گلستان', 'هرمزگان', 'لرستان',
+    'همدان', 'کردستان', 'مرکزی', 'قزوین', 'اردبیل', 'بوشهر',
+    'زنجان', 'قم', 'یزد', 'چهارمحال و بختیاری', 'سمنان',
+    'خراسان شمالی', 'خراسان جنوبی', 'کهگیلویه و بویراحمد', 'ایلام', 'البرز',
   ];
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _tabController.addListener(() {
-      setState(() {
-        _fabLabel = _tabController.index == 0 ? 'افزودن آگهی' : 'افزودن آگهی';
-      });
-    });
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    _loadEquipmentAds();
+    _loadBakeryAds();
+  }
+
+  Future<void> _loadEquipmentAds() async {
+    setState(() => _isLoadingEquipment = true);
+    try {
+      final ads = await ApiService.getEquipmentAds();
+      if (mounted) {
+        setState(() {
+          _equipmentAds = ads.map((json) => EquipmentAd.fromJson(json)).toList();
+          _isLoadingEquipment = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoadingEquipment = false);
+    }
+  }
+
+  Future<void> _loadBakeryAds() async {
+    setState(() => _isLoadingBakery = true);
+    try {
+      final ads = await ApiService.getBakeryAds();
+      if (mounted) {
+        setState(() {
+          _bakeryAds = ads;
+          _isLoadingBakery = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoadingBakery = false);
+    }
   }
 
   @override
@@ -182,12 +116,12 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
             indicatorColor: AppTheme.primaryGreen,
             tabs: [
               Tab(
-                icon: Icon(Icons.settings),
-                text: 'دستگاه‌ها',
-              ),
-              Tab(
                 icon: Icon(Icons.store),
                 text: 'نانوایی',
+              ),
+              Tab(
+                icon: Icon(Icons.precision_manufacturing),
+                text: 'دستگاه‌ها',
               ),
             ],
           ),
@@ -195,8 +129,8 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
         body: TabBarView(
           controller: _tabController,
           children: [
-            _buildEquipmentList(),
             _buildBakeryList(),
+            _buildEquipmentList(),
           ],
         ),
         floatingActionButton: AddMenuFab(),
@@ -206,11 +140,19 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
   }
 
   Widget _buildEquipmentList() {
-    return ListView.builder(
+    if (_isLoadingEquipment) {
+      return Center(child: CircularProgressIndicator());
+    }
+    if (_equipmentAds.isEmpty) {
+      return Center(child: Text('آگهی تجهیزاتی یافت نشد'));
+    }
+    return RefreshIndicator(
+      onRefresh: _loadEquipmentAds,
+      child: ListView.builder(
       padding: EdgeInsets.all(20),
-      itemCount: _sampleEquipmentAds.length,
+      itemCount: _equipmentAds.length,
       itemBuilder: (context, index) {
-        final ad = _sampleEquipmentAds[index];
+        final ad = _equipmentAds[index];
         return Container(
           margin: EdgeInsets.only(bottom: 20),
           decoration: BoxDecoration(
@@ -327,182 +269,180 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
           ),
         );
       },
+    ),
     );
   }
 
   Widget _buildBakeryList() {
-    return ListView.builder(
-      padding: EdgeInsets.all(20),
-      itemCount: _sampleBakeryAds.length,
-      itemBuilder: (context, index) {
-        final ad = _sampleBakeryAds[index];
-        return Container(
-          margin: EdgeInsets.only(bottom: 20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.08),
-                blurRadius: 20,
-                offset: Offset(0, 4),
-                spreadRadius: 2,
-              ),
-            ],
+    if (_isLoadingBakery) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_bakeryAds.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.store_mall_directory_outlined, size: 80, color: AppTheme.textGrey),
+            const SizedBox(height: 16),
+            Text('آگهی نانوایی یافت نشد', style: TextStyle(color: AppTheme.textGrey, fontSize: 16)),
+          ],
+        ),
+      );
+    }
+    return RefreshIndicator(
+      onRefresh: _loadBakeryAds,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: _bakeryAds.length,
+        itemBuilder: (context, index) => _buildBakeryCard(_bakeryAds[index]),
+      ),
+    );
+  }
+
+  Widget _buildBakeryCard(BakeryAd ad) {
+    final isSale = ad.type == BakeryAdType.sale;
+    final color = isSale ? Colors.blue : Colors.purple;
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 15,
+            offset: const Offset(0, 4),
           ),
-          child: InkWell(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => BakeryDetailScreen(ad: ad),
-                ),
-              );
-            },
-            borderRadius: BorderRadius.circular(16),
-            child: Padding(
-              padding: EdgeInsets.all(16),
+        ],
+      ),
+      child: InkWell(
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => BakeryDetailScreen(ad: ad))),
+        borderRadius: BorderRadius.circular(20),
+        child: Column(
+          children: [
+            // Image or placeholder
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+              child: ad.images.isNotEmpty
+                  ? Image.network(
+                      ad.images.first.startsWith('http') ? ad.images.first : 'http://10.0.2.2:3000${ad.images.first}',
+                      height: 160,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => _buildPlaceholder(color),
+                    )
+                  : _buildPlaceholder(color),
+            ),
+            // Content
+            Padding(
+              padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Type badge and title
                   Row(
                     children: [
                       Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              Color(0xFF42A5F5),
-                              Color(0xFF64B5F6),
-                            ],
-                          ),
+                          gradient: LinearGradient(colors: [color, color.withValues(alpha: 0.7)]),
                           borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Color(0xFF42A5F5).withValues(alpha: 0.3),
-                              blurRadius: 8,
-                              offset: Offset(0, 2),
-                            ),
-                          ],
                         ),
                         child: Text(
-                          ad.type == BakeryAdType.sale ? 'فروش' : 'رهن و اجاره',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
+                          isSale ? '🏷️ فروش' : '🔑 رهن و اجاره',
+                          style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      const Spacer(),
+                      if (ad.images.length > 1)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade200,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.photo_library, size: 14, color: Colors.grey),
+                              const SizedBox(width: 4),
+                              Text('${ad.images.length}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                            ],
                           ),
                         ),
-                      ),
-                      Spacer(),
-                      Icon(
-                        Icons.arrow_forward_ios,
-                        size: 16,
-                        color: AppTheme.textGrey,
-                      ),
                     ],
                   ),
-                  SizedBox(height: 12),
+                  const SizedBox(height: 12),
+                  // Title
                   Text(
                     ad.title,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.textDark,
-                    ),
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  SizedBox(height: 12),
+                  const SizedBox(height: 8),
+                  // Location
                   Row(
                     children: [
-                      Icon(
-                        Icons.location_on_outlined,
-                        size: 16,
-                        color: AppTheme.textGrey,
-                      ),
-                      SizedBox(width: 4),
-                      Text(
-                        ad.location,
-                        style: TextStyle(
-                          color: AppTheme.textGrey,
-                          fontSize: 14,
+                      Icon(Icons.location_on, size: 16, color: Colors.red.shade400),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          ad.location,
+                          style: TextStyle(color: AppTheme.textGrey, fontSize: 13),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
                   ),
-                  SizedBox(height: 12),
+                  const SizedBox(height: 12),
+                  // Info chips
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      if (ad.flourQuota != null && ad.flourQuota! > 0)
+                        _buildInfoChip(Icons.inventory_2, '${ad.flourQuota} کیسه آرد', Colors.deepOrange),
+                      if (ad.breadPrice != null && ad.breadPrice! > 0)
+                        _buildInfoChip(Icons.bakery_dining, NumberFormatter.formatPrice(ad.breadPrice!), Colors.brown),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  // Price
                   Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     decoration: BoxDecoration(
-                      color: AppTheme.background,
-                      borderRadius: BorderRadius.circular(8),
+                      color: color.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    child: ad.type == BakeryAdType.sale
+                    child: isSale
                         ? Row(
-                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
+                              Text('قیمت فروش:', style: TextStyle(color: color, fontSize: 14)),
                               Text(
-                                'قیمت: ',
-                                style: TextStyle(
-                                  color: AppTheme.textGrey,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              Text(
-                                NumberFormatter.formatPrice(ad.salePrice!),
-                                style: TextStyle(
-                                  color: Color(0xFF1976D2),
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                                NumberFormatter.formatPrice(ad.salePrice ?? 0),
+                                style: TextStyle(color: color, fontSize: 16, fontWeight: FontWeight.bold),
                               ),
                             ],
                           )
                         : Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(
-                                    'رهن: ',
-                                    style: TextStyle(
-                                      color: AppTheme.textGrey,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  Text(
-                                    NumberFormatter.formatPrice(ad.rentDeposit!),
-                                    style: TextStyle(
-                                      color: Color(0xFF1976D2),
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
+                                  Text('رهن:', style: TextStyle(color: color, fontSize: 13)),
+                                  Text(NumberFormatter.formatPrice(ad.rentDeposit ?? 0), style: TextStyle(color: color, fontWeight: FontWeight.bold)),
                                 ],
                               ),
-                              SizedBox(height: 4),
+                              const SizedBox(height: 4),
                               Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(
-                                    'اجاره: ',
-                                    style: TextStyle(
-                                      color: AppTheme.textGrey,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  Text(
-                                    NumberFormatter.formatPrice(ad.monthlyRent!),
-                                    style: TextStyle(
-                                      color: Color(0xFF1976D2),
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
+                                  Text('اجاره ماهانه:', style: TextStyle(color: color, fontSize: 13)),
+                                  Text(NumberFormatter.formatPrice(ad.monthlyRent ?? 0), style: TextStyle(color: color, fontWeight: FontWeight.bold)),
                                 ],
                               ),
                             ],
@@ -511,11 +451,49 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                 ],
               ),
             ),
-          ),
-        );
-      },
+          ],
+        ),
+      ),
     );
   }
 
+  Widget _buildPlaceholder(Color color) {
+    return Container(
+      height: 160,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [color.withValues(alpha: 0.3), color.withValues(alpha: 0.1)],
+        ),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.store, size: 50, color: color.withValues(alpha: 0.5)),
+          const SizedBox(height: 8),
+          Text('بدون تصویر', style: TextStyle(color: color.withValues(alpha: 0.5), fontSize: 12)),
+        ],
+      ),
+    );
+  }
 
+  Widget _buildInfoChip(IconData icon, String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 4),
+          Text(text, style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w500)),
+        ],
+      ),
+    );
+  }
 }

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../models/bakery_ad.dart';
-import '../../models/iran_provinces.dart';
+import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_buttons_style.dart';
 import '../../utils/currency_input_formatter.dart';
@@ -23,11 +23,15 @@ class _AddBakeryAdScreenState extends State<AddBakeryAdScreen> {
   final _rentDepositController = TextEditingController();
   final _monthlyRentController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _flourQuotaController = TextEditingController();
+  final _breadPriceController = TextEditingController();
   BakeryAdType _selectedType = BakeryAdType.sale;
   String? _selectedLocation;
   String _salePriceWords = '';
   String _rentDepositWords = '';
   String _monthlyRentWords = '';
+  String _breadPriceWords = '';
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -37,18 +41,68 @@ class _AddBakeryAdScreenState extends State<AddBakeryAdScreen> {
     _rentDepositController.dispose();
     _monthlyRentController.dispose();
     _phoneController.dispose();
+    _flourQuotaController.dispose();
+    _breadPriceController.dispose();
     super.dispose();
   }
 
-  void _submitAd() {
-    if (_formKey.currentState!.validate()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('آگهی با موفقیت ثبت شد'),
-          backgroundColor: AppTheme.primaryGreen,
-        ),
-      );
-      Navigator.pop(context);
+  int _parsePrice(String value) {
+    return int.tryParse(value.replaceAll(',', '')) ?? 0;
+  }
+
+  Future<void> _submitAd() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final adData = <String, dynamic>{
+        'title': _titleController.text.trim(),
+        'description': _descriptionController.text.trim(),
+        'type': _selectedType == BakeryAdType.sale ? 'sale' : 'rent',
+        'location': _selectedLocation,
+        'phoneNumber': _phoneController.text.trim(),
+        if (_flourQuotaController.text.isNotEmpty)
+          'flourQuota': int.tryParse(_flourQuotaController.text) ?? 0,
+        if (_breadPriceController.text.isNotEmpty)
+          'breadPrice': _parsePrice(_breadPriceController.text),
+      };
+
+      if (_selectedType == BakeryAdType.sale) {
+        adData['salePrice'] = _parsePrice(_salePriceController.text);
+      } else {
+        adData['rentDeposit'] = _parsePrice(_rentDepositController.text);
+        adData['monthlyRent'] = _parsePrice(_monthlyRentController.text);
+      }
+
+      final success = await ApiService.createBakeryAd(adData);
+
+      if (mounted) {
+        setState(() => _isLoading = false);
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('آگهی با موفقیت ثبت شد و پس از تایید منتشر می‌شود'),
+              backgroundColor: AppTheme.primaryGreen,
+            ),
+          );
+          Navigator.pop(context, true);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('خطا در ثبت آگهی'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('خطا: $e'), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 
@@ -225,6 +279,52 @@ class _AddBakeryAdScreenState extends State<AddBakeryAdScreen> {
               ],
               SizedBox(height: 16),
 
+              // سهمیه آرد
+              TextFormField(
+                controller: _flourQuotaController,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: InputDecoration(
+                  labelText: 'سهمیه آرد (کیسه در ماه)',
+                  hintText: 'مثال: 100',
+                  prefixIcon: Icon(Icons.inventory_2, color: AppTheme.primaryGreen),
+                ),
+              ),
+              SizedBox(height: 16),
+
+              // قیمت نان
+              TextFormField(
+                controller: _breadPriceController,
+                keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  CurrencyInputFormatter(),
+                ],
+                decoration: InputDecoration(
+                  labelText: 'قیمت نان (تومان)',
+                  hintText: 'مثال: 5000',
+                  prefixIcon: Icon(Icons.bakery_dining, color: AppTheme.primaryGreen),
+                ),
+                onChanged: (value) {
+                  setState(() {
+                    _breadPriceWords = NumberToWords.convert(value);
+                  });
+                },
+              ),
+              if (_breadPriceWords.isNotEmpty)
+                Padding(
+                  padding: EdgeInsets.only(top: 8, right: 16, bottom: 8),
+                  child: Text(
+                    _breadPriceWords,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.primaryGreen,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              SizedBox(height: 16),
+
               // Location picker from map
               TextFormField(
                 readOnly: true,
@@ -295,9 +395,18 @@ class _AddBakeryAdScreenState extends State<AddBakeryAdScreen> {
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
-                  onPressed: _submitAd,
+                  onPressed: _isLoading ? null : _submitAd,
                   style: AppButtonsStyle.primaryButton(verticalPadding: 18),
-                  child: Text('ثبت آگهی'),
+                  child: _isLoading
+                      ? SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text('ثبت آگهی'),
                 ),
               ),
               SizedBox(height: 16),

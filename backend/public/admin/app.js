@@ -123,15 +123,90 @@ async function loadDashboard() {
   try {
     const data = await apiCall('/admin/dashboard');
     if (data.success) {
-      const { counts } = data.data;
+      const { counts, pending, onlineUsers, today, weeklyStats, locationStats, recentUsers, recentJobAds } = data.data;
+      
+      // آمار کلی
       document.getElementById('statsGrid').innerHTML = `
         <div class="stat-card"><div class="icon">👥</div><div class="value">${counts.users}</div><div class="label">کاربران</div></div>
         <div class="stat-card"><div class="icon">💼</div><div class="value">${counts.jobAds}</div><div class="label">آگهی شغلی</div></div>
         <div class="stat-card"><div class="icon">🔍</div><div class="value">${counts.jobSeekers}</div><div class="label">کارجو</div></div>
         <div class="stat-card"><div class="icon">🏪</div><div class="value">${counts.bakeryAds}</div><div class="label">آگهی نانوایی</div></div>
         <div class="stat-card"><div class="icon">⚙️</div><div class="value">${counts.equipmentAds}</div><div class="label">تجهیزات</div></div>
-        <div class="stat-card"><div class="icon">⭐</div><div class="value">${counts.reviews}</div><div class="label">نظرات</div></div>
+        <div class="stat-card"><div class="icon">💬</div><div class="value">${counts.chats}</div><div class="label">پیام‌ها</div></div>
+        <div class="stat-card"><div class="icon">🟢</div><div class="value">${onlineUsers}</div><div class="label">آنلاین</div></div>
       `;
+      
+      // در انتظار تایید
+      document.getElementById('pendingStats').innerHTML = `
+        <div class="pending-card"><div class="value">${pending.jobAds}</div><div class="label">آگهی شغلی</div></div>
+        <div class="pending-card"><div class="value">${pending.jobSeekers}</div><div class="label">کارجو</div></div>
+      `;
+      
+      // آمار امروز
+      document.getElementById('todayStats').innerHTML = `
+        <div class="today-card"><div class="value">${today.users}</div><div class="label">کاربر جدید</div></div>
+        <div class="today-card"><div class="value">${today.jobAds}</div><div class="label">آگهی شغلی</div></div>
+        <div class="today-card"><div class="value">${today.jobSeekers}</div><div class="label">کارجو</div></div>
+        <div class="today-card"><div class="value">${today.chats}</div><div class="label">پیام</div></div>
+      `;
+      
+      // نمودار هفتگی
+      const maxVal = Math.max(...weeklyStats.flatMap(s => [s.users, s.jobAds, s.jobSeekers]), 1);
+      document.getElementById('weeklyChart').innerHTML = `
+        <div class="chart-bars">
+          ${weeklyStats.map(s => `
+            <div class="chart-bar">
+              <div class="bar-group">
+                <div class="bar bar-users" style="height: ${(s.users / maxVal) * 120}px" title="کاربر: ${s.users}"></div>
+                <div class="bar bar-jobs" style="height: ${(s.jobAds / maxVal) * 120}px" title="آگهی: ${s.jobAds}"></div>
+                <div class="bar bar-seekers" style="height: ${(s.jobSeekers / maxVal) * 120}px" title="کارجو: ${s.jobSeekers}"></div>
+              </div>
+              <div class="bar-label">${s.date}</div>
+            </div>
+          `).join('')}
+        </div>
+        <div class="chart-legend">
+          <div class="legend-item"><div class="legend-color bar-users"></div>کاربران</div>
+          <div class="legend-item"><div class="legend-color bar-jobs"></div>آگهی‌ها</div>
+          <div class="legend-item"><div class="legend-color bar-seekers"></div>کارجوها</div>
+        </div>
+      `;
+      
+      // آمار استان‌ها
+      document.getElementById('locationStats').innerHTML = locationStats.length > 0 
+        ? locationStats.map(l => `
+            <div class="location-card">
+              <span class="name">${l.location || 'نامشخص'}</span>
+              <span class="count">${l.count}</span>
+            </div>
+          `).join('')
+        : '<p style="color:#999">هنوز آگهی ثبت نشده</p>';
+      
+      // آخرین کاربران
+      document.getElementById('recentUsers').innerHTML = recentUsers.length > 0
+        ? recentUsers.map(u => `
+            <div class="recent-item">
+              <div class="info">
+                <span class="name">${u.name || 'بدون نام'}</span>
+                <span class="sub">${u.phone}</span>
+              </div>
+              <span class="time">${new Date(u.createdAt).toLocaleDateString('fa-IR')}</span>
+            </div>
+          `).join('')
+        : '<p style="color:#999">کاربری ثبت نشده</p>';
+      
+      // آخرین آگهی‌ها
+      document.getElementById('recentJobAds').innerHTML = recentJobAds.length > 0
+        ? recentJobAds.map(ad => `
+            <div class="recent-item">
+              <div class="info">
+                <span class="name">${ad.title}</span>
+                <span class="sub">${ad.user?.name || ad.user?.phone || '-'}</span>
+              </div>
+              <span class="time">${new Date(ad.createdAt).toLocaleDateString('fa-IR')}</span>
+            </div>
+          `).join('')
+        : '<p style="color:#999">آگهی ثبت نشده</p>';
     }
   } catch (err) {
     console.error('Error loading dashboard:', err);
@@ -298,19 +373,26 @@ async function deleteJobSeeker(id) {
 async function loadBakeryAds(page = 1) {
   const search = document.getElementById('bakeryAdSearch')?.value || '';
   const type = document.getElementById('bakeryAdType')?.value || '';
+  const isApproved = document.getElementById('bakeryAdApproved')?.value || '';
   try {
-    const data = await apiCall(`/admin/bakery-ads?page=${page}&search=${search}&type=${type}`);
+    let url = `/admin/bakery-ads?page=${page}&search=${search}&type=${type}`;
+    if (isApproved) url += `&isApproved=${isApproved}`;
+    const data = await apiCall(url);
     if (data.success) {
       document.getElementById('bakeryAdsTable').innerHTML = `
         <table>
-          <thead><tr><th>عنوان</th><th>نوع</th><th>قیمت</th><th>عملیات</th></tr></thead>
+          <thead><tr><th>عنوان</th><th>نوع</th><th>قیمت</th><th>وضعیت</th><th>عملیات</th></tr></thead>
           <tbody>
             ${data.data.map(ad => `
               <tr>
                 <td>${ad.title}</td>
                 <td>${ad.type === 'sale' ? 'فروش' : 'اجاره'}</td>
-                <td>${ad.price ? ad.price.toLocaleString() + ' تومان' : '-'}</td>
-                <td><button class="action-btn btn-delete" onclick="deleteBakeryAd('${ad.id}')">حذف</button></td>
+                <td>${ad.salePrice ? ad.salePrice.toLocaleString() + ' تومان' : (ad.rentDeposit ? ad.rentDeposit.toLocaleString() + ' رهن' : '-')}</td>
+                <td><span class="badge ${ad.isApproved ? 'badge-success' : 'badge-warning'}">${ad.isApproved ? 'تایید شده' : 'در انتظار'}</span></td>
+                <td>
+                  ${!ad.isApproved ? `<button class="action-btn btn-approve" onclick="approveBakeryAd('${ad.id}')">تایید</button>` : ''}
+                  <button class="action-btn btn-delete" onclick="deleteBakeryAd('${ad.id}')">حذف</button>
+                </td>
               </tr>
             `).join('')}
           </tbody>
@@ -319,6 +401,11 @@ async function loadBakeryAds(page = 1) {
       renderPagination('bakeryAdsPagination', data.pages, page, loadBakeryAds);
     }
   } catch (err) { console.error(err); }
+}
+
+async function approveBakeryAd(id) {
+  await apiCall(`/admin/bakery-ads/${id}/approve`, 'PUT');
+  loadBakeryAds();
 }
 
 async function deleteBakeryAd(id) {

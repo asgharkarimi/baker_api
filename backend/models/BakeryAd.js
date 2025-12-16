@@ -57,6 +57,16 @@ const BakeryAd = sequelize.define('BakeryAd', {
     type: DataTypes.JSON,
     defaultValue: []
   },
+  flourQuota: {
+    type: DataTypes.INTEGER,
+    field: 'flour_quota',
+    comment: 'سهمیه آرد (کیسه در ماه)'
+  },
+  breadPrice: {
+    type: DataTypes.INTEGER,
+    field: 'bread_price',
+    comment: 'قیمت نان (تومان)'
+  },
   isActive: {
     type: DataTypes.BOOLEAN,
     defaultValue: true,

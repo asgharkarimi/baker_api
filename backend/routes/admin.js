@@ -290,6 +290,28 @@ router.get('/bakery-ads', adminAuth, async (req, res) => {
   }
 });
 
+router.put('/bakery-ads/:id/approve', adminAuth, async (req, res) => {
+  try {
+    console.log('📝 Approving bakery ad:', req.params.id);
+    const [updated] = await BakeryAd.update({ isApproved: true }, { where: { id: req.params.id } });
+    console.log('📝 Updated rows:', updated);
+    const ad = await BakeryAd.findByPk(req.params.id);
+    console.log('📝 Ad after update:', ad?.isApproved);
+
+    await Notification.create({
+      userId: ad.userId,
+      title: 'آگهی نانوایی تایید شد',
+      message: `آگهی "${ad.title}" شما تایید شد`,
+      type: 'success'
+    });
+
+    res.json({ success: true, data: ad });
+  } catch (error) {
+    console.error('❌ Error approving bakery ad:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 router.delete('/bakery-ads/:id', adminAuth, async (req, res) => {
   try {
     await BakeryAd.destroy({ where: { id: req.params.id } });

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../models/bakery_ad.dart';
+import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/empty_state_widget.dart';
 import 'bakery_detail_screen.dart';
 import 'add_bakery_ad_screen.dart';
 
@@ -12,31 +14,29 @@ class BakeryListScreen extends StatefulWidget {
 }
 
 class _BakeryListScreenState extends State<BakeryListScreen> {
-  final List<BakeryAd> _sampleAds = [
-    BakeryAd(
-      id: '1',
-      title: 'فروش نانوایی بربری',
-      description: 'فروش سه دانگ نانوایی بربری با ملکیت به متراژ 48 متر',
-      type: BakeryAdType.sale,
-      salePrice: 500000000,
-      location: 'تهران، امام زاده حسن',
-      phoneNumber: '09103563267',
-      images: [],
-      createdAt: DateTime.now(),
-    ),
-    BakeryAd(
-      id: '2',
-      title: 'رهن و اجاره نانوایی',
-      description: 'آرد یارانه ای نوع 6، جای خواب و سرویس، دارای مجوز دو نوع نان',
-      type: BakeryAdType.rent,
-      rentDeposit: 50000000,
-      monthlyRent: 15000000,
-      location: 'قم، جعفریه',
-      phoneNumber: '09124521803',
-      images: [],
-      createdAt: DateTime.now(),
-    ),
-  ];
+  List<BakeryAd> _ads = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAds();
+  }
+
+  Future<void> _loadAds() async {
+    setState(() => _isLoading = true);
+    try {
+      final ads = await ApiService.getBakeryAds();
+      if (mounted) {
+        setState(() {
+          _ads = ads;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,10 +46,28 @@ class _BakeryListScreenState extends State<BakeryListScreen> {
         appBar: AppBar(
           title: Text('خرید و فروش نانوایی'),
         ),
-        body: ListView.builder(
-          itemCount: _sampleAds.length,
+        body: _isLoading
+            ? Center(child: CircularProgressIndicator())
+            : _ads.isEmpty
+                ? EmptyStateWidget(
+                    icon: Icons.store_outlined,
+                    title: 'آگهی نانوایی یافت نشد',
+                    message: 'اولین آگهی نانوایی را ثبت کنید!',
+                    buttonText: 'ثبت آگهی',
+                    onButtonPressed: () async {
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => AddBakeryAdScreen()),
+                      );
+                      if (result == true) _loadAds();
+                    },
+                  )
+                : RefreshIndicator(
+                    onRefresh: _loadAds,
+                    child: ListView.builder(
+          itemCount: _ads.length,
           itemBuilder: (context, index) {
-            final ad = _sampleAds[index];
+            final ad = _ads[index];
             return Card(
               child: ListTile(
                 onTap: () {
@@ -97,12 +115,14 @@ class _BakeryListScreenState extends State<BakeryListScreen> {
             );
           },
         ),
+                  ),
         floatingActionButton: FloatingActionButton.extended(
-          onPressed: () {
-            Navigator.push(
+          onPressed: () async {
+            final result = await Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => AddBakeryAdScreen()),
             );
+            if (result == true) _loadAds();
           },
           backgroundColor: AppTheme.primaryGreen,
           icon: Icon(Icons.add, color: AppTheme.white),

@@ -13,6 +13,8 @@ class BakeryAd {
   final List<String> images;
   final double? lat;
   final double? lng;
+  final int? flourQuota; // سهمیه آرد (کیسه در ماه)
+  final int? breadPrice; // قیمت نان (تومان)
   final bool isApproved;
   final int views;
   final DateTime createdAt;
@@ -30,12 +32,22 @@ class BakeryAd {
     required this.images,
     this.lat,
     this.lng,
+    this.flourQuota,
+    this.breadPrice,
     this.isApproved = false,
     this.views = 0,
     required this.createdAt,
   });
 
   factory BakeryAd.fromJson(Map<String, dynamic> json) {
+    // Parse lat/lng - can be string or number
+    double? parseLat = json['lat'] != null 
+        ? (json['lat'] is String ? double.tryParse(json['lat']) : json['lat']?.toDouble())
+        : null;
+    double? parseLng = json['lng'] != null 
+        ? (json['lng'] is String ? double.tryParse(json['lng']) : json['lng']?.toDouble())
+        : null;
+    
     return BakeryAd(
       id: json['id']?.toString() ?? '',
       title: json['title'] ?? '',
@@ -47,8 +59,10 @@ class BakeryAd {
       location: json['location'] ?? '',
       phoneNumber: json['phoneNumber'] ?? json['phone_number'] ?? '',
       images: json['images'] != null ? List<String>.from(json['images']) : [],
-      lat: json['lat']?.toDouble(),
-      lng: json['lng']?.toDouble(),
+      lat: parseLat,
+      lng: parseLng,
+      flourQuota: json['flourQuota'] ?? json['flour_quota'],
+      breadPrice: json['breadPrice'] ?? json['bread_price'],
       isApproved: json['isApproved'] ?? json['is_approved'] ?? false,
       views: json['views'] ?? 0,
       createdAt: json['createdAt'] != null 

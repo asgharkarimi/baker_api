@@ -157,26 +157,14 @@ class AddMenuFab extends StatelessWidget {
                   context,
                   icon: Icons.store,
                   title: 'رهن و فروش نانوایی',
-                  subtitle: 'نانوایی برای فروش یا اجاره • 200,000 تومان',
+                  subtitle: 'نانوایی برای فروش یا اجاره',
                   color: Colors.orange,
                   delay: 200,
-                  isPaid: true,
                   onTap: () {
                     Navigator.pop(context);
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (_) => PaymentScreen(
-                          adType: 'رهن و فروش نانوایی',
-                          amount: 200000,
-                          onPaymentSuccess: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => AddBakeryAdScreen()),
-                            );
-                          },
-                        ),
-                      ),
+                      MaterialPageRoute(builder: (_) => AddBakeryAdScreen()),
                     );
                   },
                 ),
@@ -185,26 +173,14 @@ class AddMenuFab extends StatelessWidget {
                   context,
                   icon: Icons.settings,
                   title: 'فروش دستگاه',
-                  subtitle: 'تجهیزات نانوایی برای فروش • 50,000 تومان',
+                  subtitle: 'تجهیزات نانوایی برای فروش',
                   color: Colors.purple,
                   delay: 300,
-                  isPaid: true,
                   onTap: () {
                     Navigator.pop(context);
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (_) => PaymentScreen(
-                          adType: 'فروش دستگاه',
-                          amount: 50000,
-                          onPaymentSuccess: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => AddEquipmentAdScreen()),
-                            );
-                          },
-                        ),
-                      ),
+                      MaterialPageRoute(builder: (_) => AddEquipmentAdScreen()),
                     );
                   },
                 ),
