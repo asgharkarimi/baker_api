@@ -44,6 +44,15 @@ const User = sequelize.define('User', {
   verificationExpires: {
     type: DataTypes.DATE,
     field: 'verification_expires'
+  },
+  lastSeen: {
+    type: DataTypes.DATE,
+    field: 'last_seen'
+  },
+  isOnline: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    field: 'is_online'
   }
 }, {
   tableName: 'users',

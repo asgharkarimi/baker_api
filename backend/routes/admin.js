@@ -1,37 +1,97 @@
 const express = require('express');
 const router = express.Router();
 const { Op } = require('sequelize');
+const sequelize = require('../config/database');
 const { adminAuth } = require('../middleware/auth');
-const { User, JobAd, JobSeeker, BakeryAd, EquipmentAd, Review, Notification } = require('../models');
+const { User, JobAd, JobSeeker, BakeryAd, EquipmentAd, Review, Notification, Chat } = require('../models');
 
 // ==================== داشبورد ====================
 router.get('/dashboard', adminAuth, async (req, res) => {
   try {
-    const [users, jobAds, jobSeekers, bakeryAds, equipmentAds, reviews] = await Promise.all([
+    // آمار کلی
+    const [users, jobAds, jobSeekers, bakeryAds, equipmentAds, reviews, chats] = await Promise.all([
       User.count(),
       JobAd.count(),
       JobSeeker.count(),
       BakeryAd.count(),
       EquipmentAd.count(),
-      Review.count()
+      Review.count(),
+      Chat.count()
     ]);
 
+    // آمار در انتظار تایید
+    const [pendingJobAds, pendingJobSeekers] = await Promise.all([
+      JobAd.count({ where: { isApproved: false } }),
+      JobSeeker.count({ where: { isApproved: false } })
+    ]);
+
+    // کاربران آنلاین
+    const onlineUsers = await User.count({ where: { isOnline: true } });
+
+    // آمار امروز
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const [todayUsers, todayJobAds, todayJobSeekers, todayChats] = await Promise.all([
+      User.count({ where: { createdAt: { [Op.gte]: today } } }),
+      JobAd.count({ where: { createdAt: { [Op.gte]: today } } }),
+      JobSeeker.count({ where: { createdAt: { [Op.gte]: today } } }),
+      Chat.count({ where: { createdAt: { [Op.gte]: today } } })
+    ]);
+
+    // آمار هفته گذشته (روزانه)
+    const weeklyStats = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      date.setHours(0, 0, 0, 0);
+      const nextDate = new Date(date);
+      nextDate.setDate(nextDate.getDate() + 1);
+
+      const [dayUsers, dayJobAds, dayJobSeekers] = await Promise.all([
+        User.count({ where: { createdAt: { [Op.gte]: date, [Op.lt]: nextDate } } }),
+        JobAd.count({ where: { createdAt: { [Op.gte]: date, [Op.lt]: nextDate } } }),
+        JobSeeker.count({ where: { createdAt: { [Op.gte]: date, [Op.lt]: nextDate } } })
+      ]);
+
+      weeklyStats.push({
+        date: date.toLocaleDateString('fa-IR', { weekday: 'short' }),
+        users: dayUsers,
+        jobAds: dayJobAds,
+        jobSeekers: dayJobSeekers
+      });
+    }
+
+    // آخرین کاربران
     const recentUsers = await User.findAll({
       order: [['createdAt', 'DESC']],
       limit: 5,
       attributes: { exclude: ['password', 'verificationCode'] }
     });
 
+    // آخرین آگهی‌ها
     const recentJobAds = await JobAd.findAll({
       order: [['createdAt', 'DESC']],
       limit: 5,
       include: [{ model: User, as: 'user', attributes: ['name', 'phone'] }]
     });
 
+    // آمار استان‌ها
+    const locationStats = await JobAd.findAll({
+      attributes: ['location', [sequelize.fn('COUNT', sequelize.col('location')), 'count']],
+      group: ['location'],
+      order: [[sequelize.literal('count'), 'DESC']],
+      limit: 5
+    });
+
     res.json({
       success: true,
       data: {
-        counts: { users, jobAds, jobSeekers, bakeryAds, equipmentAds, reviews },
+        counts: { users, jobAds, jobSeekers, bakeryAds, equipmentAds, reviews, chats },
+        pending: { jobAds: pendingJobAds, jobSeekers: pendingJobSeekers },
+        onlineUsers,
+        today: { users: todayUsers, jobAds: todayJobAds, jobSeekers: todayJobSeekers, chats: todayChats },
+        weeklyStats,
+        locationStats: locationStats.map(l => ({ location: l.location, count: l.get('count') })),
         recentUsers,
         recentJobAds
       }
@@ -97,8 +157,10 @@ router.get('/job-ads', adminAuth, async (req, res) => {
     const where = {};
 
     if (search) where.title = { [Op.like]: `%${search}%` };
-    if (isActive !== undefined) where.isActive = isActive === 'true';
-    if (isApproved !== undefined) where.isApproved = isApproved === 'true';
+    if (isActive === 'true' || isActive === 'false') where.isActive = isActive === 'true';
+    if (isApproved === 'true' || isApproved === 'false') where.isApproved = isApproved === 'true';
+
+    console.log('📋 Admin job-ads query:', { page, search, isActive, isApproved, where });
 
     const { count, rows } = await JobAd.findAndCountAll({
       where,
@@ -108,8 +170,10 @@ router.get('/job-ads', adminAuth, async (req, res) => {
       limit: Number(limit)
     });
 
+    console.log('📋 Found job ads:', count);
     res.json({ success: true, data: rows, total: count, page: Number(page), pages: Math.ceil(count / limit) });
   } catch (error) {
+    console.error('❌ Error:', error.message);
     res.status(500).json({ success: false, message: error.message });
   }
 });
@@ -154,11 +218,12 @@ router.delete('/job-ads/:id', adminAuth, async (req, res) => {
 // ==================== مدیریت کارجویان ====================
 router.get('/job-seekers', adminAuth, async (req, res) => {
   try {
-    const { page = 1, limit = 20, search, isActive } = req.query;
+    const { page = 1, limit = 20, search, isActive, isApproved } = req.query;
     const where = {};
 
     if (search) where.name = { [Op.like]: `%${search}%` };
-    if (isActive !== undefined) where.isActive = isActive === 'true';
+    if (isActive === 'true' || isActive === 'false') where.isActive = isActive === 'true';
+    if (isApproved === 'true' || isApproved === 'false') where.isApproved = isApproved === 'true';
 
     const { count, rows } = await JobSeeker.findAndCountAll({
       where,
@@ -169,6 +234,24 @@ router.get('/job-seekers', adminAuth, async (req, res) => {
     });
 
     res.json({ success: true, data: rows, total: count, page: Number(page), pages: Math.ceil(count / limit) });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.put('/job-seekers/:id/approve', adminAuth, async (req, res) => {
+  try {
+    await JobSeeker.update({ isApproved: true }, { where: { id: req.params.id } });
+    const seeker = await JobSeeker.findByPk(req.params.id);
+
+    await Notification.create({
+      userId: seeker.userId,
+      title: 'پروفایل تایید شد',
+      message: 'پروفایل کارجوی شما تایید شد',
+      type: 'success'
+    });
+
+    res.json({ success: true, data: seeker });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -304,6 +387,42 @@ router.post('/notifications/send', adminAuth, async (req, res) => {
       await Notification.create({ userId, title, message, type });
       res.json({ success: true, message: 'نوتیفیکیشن ارسال شد' });
     }
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ==================== پاک کردن کل دیتابیس ====================
+router.delete('/reset-database', adminAuth, async (req, res) => {
+  try {
+    // پاک کردن با ترتیب صحیح (اول جداول وابسته)
+    await Chat.destroy({ where: {} });
+    await Notification.destroy({ where: {} });
+    await Review.destroy({ where: {} });
+    await JobAd.destroy({ where: {} });
+    await JobSeeker.destroy({ where: {} });
+    await BakeryAd.destroy({ where: {} });
+    await EquipmentAd.destroy({ where: {} });
+    await User.destroy({ where: {} });
+    
+    res.json({ success: true, message: 'دیتابیس با موفقیت پاک شد' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// پاک کردن فقط داده‌ها (بدون کاربران)
+router.delete('/clear-data', adminAuth, async (req, res) => {
+  try {
+    await Chat.destroy({ where: {} });
+    await Notification.destroy({ where: {} });
+    await Review.destroy({ where: {} });
+    await JobAd.destroy({ where: {} });
+    await JobSeeker.destroy({ where: {} });
+    await BakeryAd.destroy({ where: {} });
+    await EquipmentAd.destroy({ where: {} });
+    
+    res.json({ success: true, message: 'داده‌ها پاک شدند (کاربران حفظ شدند)' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

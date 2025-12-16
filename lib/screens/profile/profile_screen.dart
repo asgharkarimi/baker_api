@@ -4,6 +4,8 @@ import '../../theme/app_theme.dart';
 import '../auth/login_screen.dart';
 import '../bookmarks/bookmarks_screen.dart';
 import 'about_screen.dart';
+import 'my_ads_screen.dart';
+import 'edit_profile_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -45,7 +47,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         body: CustomScrollView(
           slivers: [
             SliverAppBar(
-              expandedHeight: 200,
+              expandedHeight: 240,
               floating: false,
               pinned: true,
               flexibleSpace: FlexibleSpaceBar(
@@ -90,11 +92,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           child: CircleAvatar(
                             radius: 50,
                             backgroundColor: Colors.white,
-                            child: Icon(
-                              Icons.person,
-                              size: 50,
-                              color: AppTheme.primaryGreen,
-                            ),
+                            backgroundImage: _user?['profileImage'] != null
+                                ? NetworkImage('http://10.0.2.2:3000${_user!['profileImage']}')
+                                : null,
+                            child: _user?['profileImage'] == null
+                                ? Icon(
+                                    Icons.person,
+                                    size: 50,
+                                    color: AppTheme.primaryGreen,
+                                  )
+                                : null,
                           ),
                         ),
                       ),
@@ -105,6 +112,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TextButton.icon(
+                        onPressed: () async {
+                          final result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => EditProfileScreen(user: _user),
+                            ),
+                          );
+                          if (result == true) _loadUserData();
+                        },
+                        icon: const Icon(Icons.edit, color: Colors.white, size: 16),
+                        label: const Text(
+                          'ویرایش پروفایل',
+                          style: TextStyle(color: Colors.white, fontSize: 14),
+                        ),
+                        style: TextButton.styleFrom(
+                          backgroundColor: Colors.white24,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                         ),
                       ),
                     ],
@@ -121,7 +150,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     title: 'آگهی‌های من',
                     subtitle: 'مشاهده و مدیریت آگهی‌ها',
                     color: Colors.blue,
-                    onTap: () {},
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const MyAdsScreen()),
+                      );
+                    },
                   ),
                   _buildMenuCard(
                     icon: Icons.bookmark,

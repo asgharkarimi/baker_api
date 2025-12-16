@@ -45,10 +45,44 @@
       <!-- Dashboard -->
       <section id="dashboardPage" class="page">
         <h2>داشبورد</h2>
+        
+        <!-- آمار کلی -->
         <div class="stats-grid" id="statsGrid"></div>
+        
+        <!-- آمار در انتظار تایید -->
+        <div class="pending-section">
+          <h3>⏳ در انتظار تایید</h3>
+          <div id="pendingStats" class="pending-grid"></div>
+        </div>
+        
+        <!-- آمار امروز -->
+        <div class="today-section">
+          <h3>📅 آمار امروز</h3>
+          <div id="todayStats" class="today-grid"></div>
+        </div>
+        
+        <!-- نمودار هفتگی -->
         <div class="charts-section">
-          <h3>آمار هفتگی</h3>
-          <div id="chartContainer" class="chart-container"></div>
+          <h3>📈 آمار هفته گذشته</h3>
+          <div id="weeklyChart" class="weekly-chart"></div>
+        </div>
+        
+        <!-- آمار استان‌ها -->
+        <div class="location-section">
+          <h3>📍 پرطرفدارترین استان‌ها</h3>
+          <div id="locationStats" class="location-grid"></div>
+        </div>
+        
+        <!-- آخرین کاربران و آگهی‌ها -->
+        <div class="recent-section">
+          <div class="recent-box">
+            <h3>👥 آخرین کاربران</h3>
+            <div id="recentUsers"></div>
+          </div>
+          <div class="recent-box">
+            <h3>💼 آخرین آگهی‌ها</h3>
+            <div id="recentJobAds"></div>
+          </div>
         </div>
       </section>
 

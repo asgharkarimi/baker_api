@@ -8,9 +8,8 @@ const { auth } = require('../middleware/auth');
 router.get('/', async (req, res) => {
   try {
     const { page = 1, limit = 20, category, location, minSalary, maxSalary, search } = req.query;
-    const where = { isActive: true };
-    // فعلاً همه آگهی‌ها نمایش داده میشن (بدون نیاز به تایید ادمین)
-    // برای فعال کردن تایید ادمین: where.isApproved = true;
+    // فقط آگهی‌های فعال و تایید شده توسط ادمین نمایش داده میشن
+    const where = { isActive: true, isApproved: true };
 
     if (category) where.category = category;
     if (location) where.location = { [Op.like]: `%${location}%` };
@@ -52,9 +51,13 @@ router.get('/:id', async (req, res) => {
 // ایجاد آگهی
 router.post('/', auth, async (req, res) => {
   try {
+    console.log('📝 ایجاد آگهی:', req.body);
+    console.log('👤 کاربر:', req.userId);
     const ad = await JobAd.create({ ...req.body, userId: req.userId });
+    console.log('✅ آگهی ایجاد شد:', ad.id);
     res.status(201).json({ success: true, data: ad });
   } catch (error) {
+    console.error('❌ خطا در ایجاد آگهی:', error.message);
     res.status(500).json({ success: false, message: error.message });
   }
 });

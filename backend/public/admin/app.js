@@ -166,8 +166,8 @@ function renderUsersTable(users) {
             <td><span class="badge ${u.role === 'admin' ? 'badge-info' : 'badge-success'}">${u.role === 'admin' ? 'ادمین' : 'کاربر'}</span></td>
             <td><span class="badge ${u.isActive ? 'badge-success' : 'badge-danger'}">${u.isActive ? 'فعال' : 'غیرفعال'}</span></td>
             <td>
-              <button class="action-btn btn-edit" onclick="editUser('${u._id}')">ویرایش</button>
-              <button class="action-btn btn-delete" onclick="deleteUser('${u._id}')">حذف</button>
+              <button class="action-btn btn-edit" onclick="editUser('${u.id}')">ویرایش</button>
+              <button class="action-btn btn-delete" onclick="deleteUser('${u.id}')">حذف</button>
             </td>
           </tr>
         `).join('')}
@@ -193,14 +193,20 @@ async function deleteUser(id) {
 
 // Job Ads
 async function loadJobAds(page = 1) {
-  const search = document.getElementById('jobAdSearch').value;
-  const isApproved = document.getElementById('jobAdApproved').value;
+  const search = document.getElementById('jobAdSearch')?.value || '';
+  const isApproved = document.getElementById('jobAdApproved')?.value || '';
   
   try {
-    const data = await apiCall(`/admin/job-ads?page=${page}&search=${search}&isApproved=${isApproved}`);
+    let url = `/admin/job-ads?page=${page}&search=${search}`;
+    if (isApproved) url += `&isApproved=${isApproved}`;
+    console.log('Loading job ads from:', url);
+    const data = await apiCall(url);
+    console.log('Job ads response:', data);
     if (data.success) {
       renderJobAdsTable(data.data);
       renderPagination('jobAdsPagination', data.pages, page, loadJobAds);
+    } else {
+      console.error('API error:', data.message);
     }
   } catch (err) {
     console.error('Error loading job ads:', err);
@@ -208,6 +214,11 @@ async function loadJobAds(page = 1) {
 }
 
 function renderJobAdsTable(ads) {
+  console.log('Job Ads received:', ads);
+  if (!ads || ads.length === 0) {
+    document.getElementById('jobAdsTable').innerHTML = '<p style="text-align:center;padding:20px;">هیچ آگهی شغلی یافت نشد</p>';
+    return;
+  }
   document.getElementById('jobAdsTable').innerHTML = `
     <table>
       <thead><tr><th>عنوان</th><th>دسته‌بندی</th><th>حقوق</th><th>وضعیت</th><th>عملیات</th></tr></thead>
@@ -219,8 +230,8 @@ function renderJobAdsTable(ads) {
             <td>${ad.salary ? ad.salary.toLocaleString() + ' تومان' : '-'}</td>
             <td><span class="badge ${ad.isApproved ? 'badge-success' : 'badge-warning'}">${ad.isApproved ? 'تایید شده' : 'در انتظار'}</span></td>
             <td>
-              ${!ad.isApproved ? `<button class="action-btn btn-approve" onclick="approveJobAd('${ad._id}')">تایید</button>` : ''}
-              <button class="action-btn btn-delete" onclick="deleteJobAd('${ad._id}')">حذف</button>
+              ${!ad.isApproved ? `<button class="action-btn btn-approve" onclick="approveJobAd('${ad.id}')">تایید</button>` : ''}
+              <button class="action-btn btn-delete" onclick="deleteJobAd('${ad.id}')">حذف</button>
             </td>
           </tr>
         `).join('')}
@@ -249,14 +260,18 @@ async function loadJobSeekers(page = 1) {
     if (data.success) {
       document.getElementById('jobSeekersTable').innerHTML = `
         <table>
-          <thead><tr><th>نام</th><th>مهارت‌ها</th><th>حقوق درخواستی</th><th>عملیات</th></tr></thead>
+          <thead><tr><th>نام</th><th>مهارت‌ها</th><th>حقوق درخواستی</th><th>وضعیت</th><th>عملیات</th></tr></thead>
           <tbody>
             ${data.data.map(s => `
               <tr>
                 <td>${s.name || '-'}</td>
                 <td>${(s.skills || []).join('، ')}</td>
                 <td>${s.expectedSalary ? s.expectedSalary.toLocaleString() + ' تومان' : '-'}</td>
-                <td><button class="action-btn btn-delete" onclick="deleteJobSeeker('${s._id}')">حذف</button></td>
+                <td><span class="badge ${s.isApproved ? 'badge-success' : 'badge-warning'}">${s.isApproved ? 'تایید شده' : 'در انتظار'}</span></td>
+                <td>
+                  ${!s.isApproved ? `<button class="action-btn btn-approve" onclick="approveJobSeeker('${s.id}')">تایید</button>` : ''}
+                  <button class="action-btn btn-delete" onclick="deleteJobSeeker('${s.id}')">حذف</button>
+                </td>
               </tr>
             `).join('')}
           </tbody>
@@ -265,6 +280,11 @@ async function loadJobSeekers(page = 1) {
       renderPagination('jobSeekersPagination', data.pages, page, loadJobSeekers);
     }
   } catch (err) { console.error(err); }
+}
+
+async function approveJobSeeker(id) {
+  await apiCall(`/admin/job-seekers/${id}/approve`, 'PUT');
+  loadJobSeekers();
 }
 
 async function deleteJobSeeker(id) {
@@ -290,7 +310,7 @@ async function loadBakeryAds(page = 1) {
                 <td>${ad.title}</td>
                 <td>${ad.type === 'sale' ? 'فروش' : 'اجاره'}</td>
                 <td>${ad.price ? ad.price.toLocaleString() + ' تومان' : '-'}</td>
-                <td><button class="action-btn btn-delete" onclick="deleteBakeryAd('${ad._id}')">حذف</button></td>
+                <td><button class="action-btn btn-delete" onclick="deleteBakeryAd('${ad.id}')">حذف</button></td>
               </tr>
             `).join('')}
           </tbody>
@@ -323,7 +343,7 @@ async function loadEquipmentAds(page = 1) {
                 <td>${ad.title}</td>
                 <td>${ad.condition === 'new' ? 'نو' : 'دست دوم'}</td>
                 <td>${ad.price ? ad.price.toLocaleString() + ' تومان' : '-'}</td>
-                <td><button class="action-btn btn-delete" onclick="deleteEquipmentAd('${ad._id}')">حذف</button></td>
+                <td><button class="action-btn btn-delete" onclick="deleteEquipmentAd('${ad.id}')">حذف</button></td>
               </tr>
             `).join('')}
           </tbody>
@@ -358,8 +378,8 @@ async function loadReviews(page = 1) {
                 <td>${r.comment?.substring(0, 50) || '-'}...</td>
                 <td><span class="badge ${r.isApproved ? 'badge-success' : 'badge-warning'}">${r.isApproved ? 'تایید شده' : 'در انتظار'}</span></td>
                 <td>
-                  ${!r.isApproved ? `<button class="action-btn btn-approve" onclick="approveReview('${r._id}')">تایید</button>` : ''}
-                  <button class="action-btn btn-delete" onclick="deleteReview('${r._id}')">حذف</button>
+                  ${!r.isApproved ? `<button class="action-btn btn-approve" onclick="approveReview('${r.id}')">تایید</button>` : ''}
+                  <button class="action-btn btn-delete" onclick="deleteReview('${r.id}')">حذف</button>
                 </td>
               </tr>
             `).join('')}
@@ -390,7 +410,7 @@ async function loadUsersForNotification() {
     if (data.success) {
       const select = document.getElementById('notifUserId');
       select.innerHTML = '<option value="all">همه کاربران</option>' +
-        data.data.map(u => `<option value="${u._id}">${u.name || u.phone}</option>`).join('');
+        data.data.map(u => `<option value="${u.id}">${u.name || u.phone}</option>`).join('');
     }
   } catch (err) { console.error(err); }
 }

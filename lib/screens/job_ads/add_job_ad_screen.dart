@@ -36,8 +36,20 @@ class _AddJobAdScreenState extends State<AddJobAdScreen> {
     super.dispose();
   }
 
-  int _parseSalary(String value) {
-    return int.tryParse(value.replaceAll(',', '')) ?? 0;
+  // تبدیل اعداد فارسی به انگلیسی
+  String _convertPersianToEnglish(String input) {
+    const persian = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+    const english = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+    String result = input;
+    for (int i = 0; i < persian.length; i++) {
+      result = result.replaceAll(persian[i], english[i]);
+    }
+    return result;
+  }
+
+  int _parseNumber(String value) {
+    final converted = _convertPersianToEnglish(value);
+    return int.tryParse(converted.replaceAll(',', '')) ?? 0;
   }
 
   Future<void> _submitAd() async {
@@ -49,10 +61,10 @@ class _AddJobAdScreenState extends State<AddJobAdScreen> {
       final success = await ApiService.createJobAd({
         'title': _titleController.text,
         'category': _selectedCategory,
-        'dailyBags': int.tryParse(_dailyBagsController.text) ?? 0,
-        'salary': _parseSalary(_salaryController.text),
+        'dailyBags': _parseNumber(_dailyBagsController.text),
+        'salary': _parseNumber(_salaryController.text),
         'location': _selectedProvince,
-        'phoneNumber': _phoneController.text,
+        'phoneNumber': _convertPersianToEnglish(_phoneController.text),
         'description': _descriptionController.text,
       });
 

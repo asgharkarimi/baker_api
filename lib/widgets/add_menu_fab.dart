@@ -17,19 +17,30 @@ class AddMenuFab extends StatelessWidget {
     if (!isLoggedIn && context.mounted) {
       final result = await showDialog<bool>(
         context: context,
-        builder: (context) => Directionality(
+        builder: (ctx) => Directionality(
           textDirection: TextDirection.rtl,
           child: AlertDialog(
-            title: const Text('ورود به حساب کاربری'),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: [
+                Icon(Icons.login, color: AppTheme.primaryGreen),
+                const SizedBox(width: 8),
+                const Text('ورود به حساب کاربری'),
+              ],
+            ),
             content: const Text('برای ثبت آگهی باید وارد حساب کاربری خود شوید.'),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('انصراف'),
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text('انصراف', style: TextStyle(color: AppTheme.textGrey)),
               ),
               ElevatedButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('ورود'),
+                onPressed: () => Navigator.pop(ctx, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryGreen,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                child: const Text('ورود / ثبت‌نام', style: TextStyle(color: Colors.white)),
               ),
             ],
           ),
@@ -37,10 +48,14 @@ class AddMenuFab extends StatelessWidget {
       );
       
       if (result == true && context.mounted) {
-        await Navigator.push(
+        final loginResult = await Navigator.push<bool>(
           context,
           MaterialPageRoute(builder: (_) => const LoginScreen()),
         );
+        // اگه لاگین موفق بود، true برگردون
+        if (loginResult == true) {
+          return true;
+        }
         return await ApiService.checkAuth();
       }
       return false;

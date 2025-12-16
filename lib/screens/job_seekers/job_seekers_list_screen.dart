@@ -5,6 +5,7 @@ import '../../utils/number_formatter.dart';
 import '../../widgets/filter_bottom_sheet.dart';
 import '../../widgets/add_menu_fab.dart';
 import '../../widgets/empty_state_widget.dart';
+import '../../services/api_service.dart';
 import 'job_seeker_detail_screen.dart';
 
 class JobSeekersListScreen extends StatefulWidget {
@@ -17,44 +18,34 @@ class JobSeekersListScreen extends StatefulWidget {
 class _JobSeekersListScreenState extends State<JobSeekersListScreen> {
   String? _selectedProvince;
   RangeValues? _priceRange;
+  List<JobSeeker> _seekers = [];
+  bool _isLoading = true;
 
-  final List<JobSeeker> _sampleSeekers = [
-    JobSeeker(
-      id: '1',
-      name: 'علی محمدی',
-      skills: ['شاطر بربری'],
-      location: 'تهران',
-      expectedSalary: 8000000,
-    ),
-    JobSeeker(
-      id: '2',
-      name: 'حسین احمدی',
-      skills: ['خمیرگیر بربری', 'چونه گیر بربری'],
-      location: 'کرج',
-      expectedSalary: 7500000,
-    ),
-    JobSeeker(
-      id: '3',
-      name: 'رضا کریمی',
-      skills: ['شاطر لواش'],
-      location: 'اصفهان',
-      expectedSalary: 9000000,
-    ),
-    JobSeeker(
-      id: '4',
-      name: 'مهدی رضایی',
-      skills: ['خمیرگیر لواش'],
-      location: 'مشهد',
-      expectedSalary: 6000000,
-    ),
-    JobSeeker(
-      id: '5',
-      name: 'امیر حسینی',
-      skills: ['شاطر بربری', 'شاطر لواش'],
-      location: 'شیراز',
-      expectedSalary: 10000000,
-    ),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadSeekers();
+  }
+
+  Future<void> _loadSeekers() async {
+    setState(() => _isLoading = true);
+    try {
+      final seekers = await ApiService.getJobSeekers(
+        location: _selectedProvince,
+        maxSalary: _priceRange?.end.toInt(),
+      );
+      if (mounted) {
+        setState(() {
+          _seekers = seekers;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -78,6 +69,7 @@ class _JobSeekersListScreenState extends State<JobSeekersListScreen> {
                         _selectedProvince = province;
                         _priceRange = priceRange;
                       });
+                      _loadSeekers();
                     },
                   ),
                 );
@@ -103,7 +95,9 @@ class _JobSeekersListScreenState extends State<JobSeekersListScreen> {
             ),
           ],
         ),
-        body: _sampleSeekers.isEmpty
+        body: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _seekers.isEmpty
             ? EmptyStateWidget(
                 icon: Icons.person_search_outlined,
                 title: 'هیچ کارجویی یافت نشد',
@@ -112,11 +106,13 @@ class _JobSeekersListScreenState extends State<JobSeekersListScreen> {
                 buttonText: 'ثبت پروفایل کارجو',
                 onButtonPressed: () {},
               )
-            : ListView.builder(
+            : RefreshIndicator(
+                onRefresh: _loadSeekers,
+                child: ListView.builder(
                 padding: const EdgeInsets.all(20),
-                itemCount: _sampleSeekers.length,
+                itemCount: _seekers.length,
                 itemBuilder: (context, index) {
-                  final seeker = _sampleSeekers[index];
+                  final seeker = _seekers[index];
                   return TweenAnimationBuilder<double>(
                     duration: Duration(milliseconds: 300 + (index * 100)),
                     tween: Tween(begin: 0.0, end: 1.0),
@@ -166,7 +162,7 @@ class _JobSeekersListScreenState extends State<JobSeekersListScreen> {
                                     radius: 30,
                                     backgroundColor: AppTheme.primaryGreen,
                                     backgroundImage: seeker.profileImage != null
-                                        ? NetworkImage(seeker.profileImage!)
+                                        ? NetworkImage('http://10.0.2.2:3000${seeker.profileImage}')
                                         : null,
                                     child: seeker.profileImage == null
                                         ? Text(
@@ -324,6 +320,7 @@ class _JobSeekersListScreenState extends State<JobSeekersListScreen> {
                   );
                 },
               ),
+            ),
         floatingActionButton: const AddMenuFab(),
         floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       ),

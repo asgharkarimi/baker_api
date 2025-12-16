@@ -8,7 +8,8 @@ const { auth } = require('../middleware/auth');
 router.get('/', async (req, res) => {
   try {
     const { page = 1, limit = 20, location, maxSalary, search } = req.query;
-    const where = { isActive: true };
+    // فقط کارجوهای فعال و تایید شده توسط ادمین
+    const where = { isActive: true, isApproved: true };
 
     if (location) where.location = { [Op.like]: `%${location}%` };
     if (maxSalary) where.expectedSalary = { [Op.lte]: maxSalary };
@@ -16,7 +17,7 @@ router.get('/', async (req, res) => {
 
     const { count, rows } = await JobSeeker.findAndCountAll({
       where,
-      include: [{ model: User, as: 'user', attributes: ['id', 'name', 'phone'] }],
+      include: [{ model: User, as: 'user', attributes: ['id', 'name', 'phone', 'profileImage'] }],
       order: [['createdAt', 'DESC']],
       offset: (page - 1) * limit,
       limit: Number(limit)
@@ -32,7 +33,7 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const seeker = await JobSeeker.findByPk(req.params.id, {
-      include: [{ model: User, as: 'user', attributes: ['id', 'name', 'phone'] }]
+      include: [{ model: User, as: 'user', attributes: ['id', 'name', 'phone', 'profileImage'] }]
     });
     if (!seeker) return res.status(404).json({ success: false, message: 'کارجو یافت نشد' });
     res.json({ success: true, data: seeker });
@@ -70,6 +71,16 @@ router.delete('/:id', auth, async (req, res) => {
     const deleted = await JobSeeker.destroy({ where: { id: req.params.id, userId: req.userId } });
     if (!deleted) return res.status(404).json({ success: false, message: 'کارجو یافت نشد' });
     res.json({ success: true, message: 'رزومه حذف شد' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// رزومه‌های من
+router.get('/my/list', auth, async (req, res) => {
+  try {
+    const seekers = await JobSeeker.findAll({ where: { userId: req.userId }, order: [['createdAt', 'DESC']] });
+    res.json({ success: true, data: seekers });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

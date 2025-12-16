@@ -20,8 +20,21 @@ const Chat = sequelize.define('Chat', {
     references: { model: 'users', key: 'id' }
   },
   message: {
-    type: DataTypes.TEXT,
-    allowNull: false
+    type: DataTypes.TEXT
+  },
+  messageType: {
+    type: DataTypes.ENUM('text', 'image', 'video', 'voice'),
+    defaultValue: 'text',
+    field: 'message_type'
+  },
+  mediaUrl: {
+    type: DataTypes.STRING,
+    field: 'media_url'
+  },
+  replyToId: {
+    type: DataTypes.INTEGER,
+    field: 'reply_to_id',
+    references: { model: 'chats', key: 'id' }
   },
   isRead: {
     type: DataTypes.BOOLEAN,

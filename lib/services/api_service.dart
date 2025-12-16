@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/job_ad.dart';
 import '../models/job_seeker.dart';
@@ -12,6 +14,7 @@ class ApiService {
   static const String baseUrl = 'http://10.0.2.2:3000/api';
   
   static String? _token;
+  static int? _currentUserId;
 
   // ==================== Auth ====================
   
@@ -63,11 +66,25 @@ class ApiService {
       final data = jsonDecode(response.body);
       if (data['success'] == true && data['token'] != null) {
         await _saveToken(data['token']);
+        // ذخیره userId
+        if (data['user'] != null && data['user']['id'] != null) {
+          _currentUserId = data['user']['id'];
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setInt('user_id', _currentUserId!);
+        }
       }
       return data;
     } catch (e) {
       return {'success': false, 'message': 'خطا در اتصال به سرور'};
     }
+  }
+  
+  // دریافت userId کاربر فعلی
+  static Future<int?> getCurrentUserId() async {
+    if (_currentUserId != null) return _currentUserId;
+    final prefs = await SharedPreferences.getInstance();
+    _currentUserId = prefs.getInt('user_id');
+    return _currentUserId;
   }
 
   // دریافت اطلاعات کاربر
@@ -87,6 +104,25 @@ class ApiService {
       return null;
     } catch (e) {
       return null;
+    }
+  }
+
+  // ویرایش پروفایل
+  static Future<bool> updateProfile({String? name, String? profileImage}) async {
+    await _loadToken();
+    try {
+      final response = await http.put(
+        Uri.parse('$baseUrl/auth/profile'),
+        headers: _headers,
+        body: jsonEncode({
+          if (name != null) 'name': name,
+          if (profileImage != null) 'profileImage': profileImage,
+        }),
+      );
+      final data = jsonDecode(response.body);
+      return data['success'] == true;
+    } catch (e) {
+      return false;
     }
   }
 
@@ -141,14 +177,18 @@ class ApiService {
   static Future<bool> createJobAd(Map<String, dynamic> adData) async {
     await _loadToken();
     try {
+      print('📝 ارسال آگهی: $adData');
+      print('🔑 توکن: $_token');
       final response = await http.post(
         Uri.parse('$baseUrl/job-ads'),
         headers: _headers,
         body: jsonEncode(adData),
       );
+      print('📥 پاسخ: ${response.body}');
       final data = jsonDecode(response.body);
       return data['success'] == true;
     } catch (e) {
+      print('❌ خطا در ارسال آگهی: $e');
       return false;
     }
   }
@@ -226,6 +266,24 @@ class ApiService {
       return data['success'] == true;
     } catch (e) {
       return false;
+    }
+  }
+
+  static Future<List<JobSeeker>> getMyJobSeekers() async {
+    await _loadToken();
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/job-seekers/my/list'),
+        headers: _headers,
+      );
+      final data = jsonDecode(response.body);
+      
+      if (data['success'] == true) {
+        return (data['data'] as List).map((json) => JobSeeker.fromJson(json)).toList();
+      }
+      return [];
+    } catch (e) {
+      return [];
     }
   }
 
@@ -322,19 +380,40 @@ class ApiService {
   static Future<String?> uploadImage(File file) async {
     await _loadToken();
     try {
+      debugPrint('📤 Uploading to: $baseUrl/upload/image');
+      debugPrint('📁 File path: ${file.path}');
+      debugPrint('🔑 Token: $_token');
+      
       final request = http.MultipartRequest('POST', Uri.parse('$baseUrl/upload/image'));
       request.headers['Authorization'] = 'Bearer $_token';
-      request.files.add(await http.MultipartFile.fromPath('image', file.path));
       
+      // تشخیص نوع فایل
+      String ext = file.path.split('.').last.toLowerCase();
+      String mimeType = 'image/jpeg';
+      if (ext == 'png') mimeType = 'image/png';
+      else if (ext == 'gif') mimeType = 'image/gif';
+      else if (ext == 'webp') mimeType = 'image/webp';
+      
+      request.files.add(await http.MultipartFile.fromPath(
+        'image', 
+        file.path,
+        contentType: MediaType.parse(mimeType),
+      ));
+      
+      debugPrint('📤 Sending request...');
       final streamedResponse = await request.send();
+      debugPrint('📥 Status: ${streamedResponse.statusCode}');
       final response = await http.Response.fromStream(streamedResponse);
+      debugPrint('📥 Upload response: ${response.body}');
       final data = jsonDecode(response.body);
       
       if (data['success'] == true) {
         return data['data']['url'];
       }
+      debugPrint('❌ Upload failed: ${data['message']}');
       return null;
     } catch (e) {
+      debugPrint('❌ Upload error: $e');
       return null;
     }
   }
@@ -450,18 +529,126 @@ class ApiService {
     }
   }
 
-  static Future<bool> sendMessage(int receiverId, String message) async {
+  static Future<bool> sendMessage(int receiverId, String message, {int? replyToId}) async {
     await _loadToken();
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/chat/send'),
         headers: _headers,
-        body: jsonEncode({'receiverId': receiverId, 'message': message}),
+        body: jsonEncode({
+          'receiverId': receiverId,
+          'message': message,
+          if (replyToId != null) 'replyToId': replyToId,
+        }),
       );
       final data = jsonDecode(response.body);
       return data['success'] == true;
     } catch (e) {
       return false;
+    }
+  }
+
+  // ارسال فایل در چت
+  static Future<Map<String, dynamic>?> sendChatMedia(int receiverId, File file, String messageType, {int? replyToId}) async {
+    await _loadToken();
+    try {
+      final request = http.MultipartRequest('POST', Uri.parse('$baseUrl/chat/send-media'));
+      request.headers['Authorization'] = 'Bearer $_token';
+      request.fields['receiverId'] = receiverId.toString();
+      request.fields['messageType'] = messageType;
+      if (replyToId != null) request.fields['replyToId'] = replyToId.toString();
+      request.files.add(await http.MultipartFile.fromPath('file', file.path));
+      
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      final data = jsonDecode(response.body);
+      
+      if (data['success'] == true) {
+        return data['data'];
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // وضعیت آنلاین
+  static Future<void> setOnline() async {
+    await _loadToken();
+    try {
+      await http.post(Uri.parse('$baseUrl/chat/online'), headers: _headers);
+    } catch (_) {}
+  }
+
+  static Future<void> setOffline() async {
+    await _loadToken();
+    try {
+      await http.post(Uri.parse('$baseUrl/chat/offline'), headers: _headers);
+    } catch (_) {}
+  }
+
+  // تایپ کردن
+  static Future<void> sendTyping(int receiverId) async {
+    await _loadToken();
+    try {
+      await http.post(Uri.parse('$baseUrl/chat/typing/$receiverId'), headers: _headers);
+    } catch (_) {}
+  }
+
+  static Future<bool> isTyping(int senderId) async {
+    await _loadToken();
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/chat/typing/$senderId'), headers: _headers);
+      final data = jsonDecode(response.body);
+      return data['isTyping'] == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // بلاک کردن
+  static Future<bool> blockUser(int userId) async {
+    await _loadToken();
+    try {
+      final response = await http.post(Uri.parse('$baseUrl/chat/block/$userId'), headers: _headers);
+      final data = jsonDecode(response.body);
+      return data['success'] == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<bool> unblockUser(int userId) async {
+    await _loadToken();
+    try {
+      final response = await http.delete(Uri.parse('$baseUrl/chat/block/$userId'), headers: _headers);
+      final data = jsonDecode(response.body);
+      return data['success'] == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<bool> isBlocked(int userId) async {
+    await _loadToken();
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/chat/is-blocked/$userId'), headers: _headers);
+      final data = jsonDecode(response.body);
+      return data['isBlocked'] == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<Map<String, dynamic>?> getChatUser(int userId) async {
+    await _loadToken();
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/chat/user/$userId'), headers: _headers);
+      final data = jsonDecode(response.body);
+      if (data['success'] == true) return data['data'];
+      return null;
+    } catch (_) {
+      return null;
     }
   }
 

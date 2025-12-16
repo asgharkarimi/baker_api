@@ -7,7 +7,10 @@ const { auth } = require('../middleware/auth');
 // ارسال کد تایید
 router.post('/send-code', async (req, res) => {
   try {
-    const { phone } = req.body;
+    let { phone } = req.body;
+    // تبدیل اعداد فارسی به انگلیسی
+    phone = convertPersianToEnglish(phone || '');
+    
     if (!phone || phone.length !== 11) {
       return res.status(400).json({ success: false, message: 'شماره موبایل نامعتبر است' });
     }
@@ -29,10 +32,26 @@ router.post('/send-code', async (req, res) => {
   }
 });
 
+// تبدیل اعداد فارسی به انگلیسی
+function convertPersianToEnglish(str) {
+  const persianNumbers = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+  const arabicNumbers = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+  let result = str;
+  for (let i = 0; i < 10; i++) {
+    result = result.replace(new RegExp(persianNumbers[i], 'g'), i.toString());
+    result = result.replace(new RegExp(arabicNumbers[i], 'g'), i.toString());
+  }
+  return result;
+}
+
 // تایید کد و ورود
 router.post('/verify', async (req, res) => {
   try {
-    const { phone, code } = req.body;
+    let { phone, code } = req.body;
+    
+    // تبدیل اعداد فارسی به انگلیسی
+    phone = convertPersianToEnglish(phone || '');
+    code = convertPersianToEnglish(code || '');
 
     const user = await User.findOne({ where: { phone } });
     if (!user) {
@@ -59,7 +78,7 @@ router.post('/verify', async (req, res) => {
       success: true,
       message: 'ورود موفق',
       token,
-      user: { id: user.id, phone: user.phone, name: user.name, role: user.role }
+      user: { id: user.id, phone: user.phone, name: user.name, role: user.role, profileImage: user.profileImage }
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -75,10 +94,18 @@ router.get('/me', auth, async (req, res) => {
 router.put('/profile', auth, async (req, res) => {
   try {
     const { name, profileImage } = req.body;
-    await User.update({ name, profileImage }, { where: { id: req.userId } });
+    console.log('📝 Update profile:', { userId: req.userId, name, profileImage });
+    
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (profileImage !== undefined) updateData.profileImage = profileImage;
+    
+    await User.update(updateData, { where: { id: req.userId } });
     const user = await User.findByPk(req.userId, { attributes: { exclude: ['password', 'verificationCode'] } });
+    console.log('✅ Updated user:', user?.toJSON());
     res.json({ success: true, user });
   } catch (error) {
+    console.error('❌ Profile update error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });

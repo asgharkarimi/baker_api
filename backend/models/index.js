@@ -7,6 +7,7 @@ const EquipmentAd = require('./EquipmentAd');
 const Review = require('./Review');
 const Chat = require('./Chat');
 const Notification = require('./Notification');
+const BlockedUser = require('./BlockedUser');
 
 // Associations
 User.hasMany(JobAd, { foreignKey: 'userId', as: 'jobAds' });
@@ -28,9 +29,14 @@ User.hasMany(Chat, { foreignKey: 'senderId', as: 'sentMessages' });
 User.hasMany(Chat, { foreignKey: 'receiverId', as: 'receivedMessages' });
 Chat.belongsTo(User, { foreignKey: 'senderId', as: 'sender' });
 Chat.belongsTo(User, { foreignKey: 'receiverId', as: 'receiver' });
+Chat.belongsTo(Chat, { foreignKey: 'replyToId', as: 'replyTo' });
 
 User.hasMany(Notification, { foreignKey: 'userId', as: 'notifications' });
 Notification.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
+User.hasMany(BlockedUser, { foreignKey: 'userId', as: 'blockedUsers' });
+BlockedUser.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+BlockedUser.belongsTo(User, { foreignKey: 'blockedUserId', as: 'blockedUser' });
 
 module.exports = {
   sequelize,
@@ -41,5 +47,6 @@ module.exports = {
   EquipmentAd,
   Review,
   Chat,
-  Notification
+  Notification,
+  BlockedUser
 };

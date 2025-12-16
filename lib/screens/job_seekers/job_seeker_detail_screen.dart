@@ -33,13 +33,18 @@ class JobSeekerDetailScreen extends StatelessWidget {
               CircleAvatar(
                 radius: context.responsive.spacing(60),
                 backgroundColor: AppTheme.primaryGreen,
-                child: Text(
-                  seeker.firstName[0],
-                  style: TextStyle(
-                    fontSize: context.responsive.fontSize(48),
-                    color: AppTheme.white,
-                  ),
-                ),
+                backgroundImage: seeker.profileImage != null
+                    ? NetworkImage('http://10.0.2.2:3000${seeker.profileImage}')
+                    : null,
+                child: seeker.profileImage == null
+                    ? Text(
+                        seeker.firstName[0],
+                        style: TextStyle(
+                          fontSize: context.responsive.fontSize(48),
+                          color: AppTheme.white,
+                        ),
+                      )
+                    : null,
               ),
               SizedBox(height: context.responsive.spacing(16)),
               Text(
@@ -169,9 +174,9 @@ class JobSeekerDetailScreen extends StatelessWidget {
                           context,
                           MaterialPageRoute(
                             builder: (_) => ChatScreen(
-                              userId: seeker.id,
-                              userName: seeker.fullName,
-                              userAvatar: seeker.firstName[0],
+                              recipientId: seeker.id,
+                              recipientName: seeker.fullName,
+                              recipientAvatar: seeker.firstName[0],
                             ),
                           ),
                         );

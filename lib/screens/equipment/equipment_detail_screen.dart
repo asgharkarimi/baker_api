@@ -233,9 +233,9 @@ class _EquipmentDetailScreenState extends State<EquipmentDetailScreen> {
                         context,
                         MaterialPageRoute(
                           builder: (_) => ChatScreen(
-                            userId: '1',
-                            userName: 'فروشنده',
-                            userAvatar: 'ف',
+                            recipientId: '1',
+                            recipientName: 'فروشنده',
+                            recipientAvatar: 'ف',
                           ),
                         ),
                       );

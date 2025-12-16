@@ -63,9 +63,15 @@ class _LoginScreenState extends State<LoginScreen> {
     );
 
     if (result['success'] == true && mounted) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
-      );
+      // اگه از صفحه دیگه اومده (مثلاً برای ثبت آگهی)، فقط برگرد با نتیجه true
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop(true);
+      } else {
+        // اگه مستقیم اومده، برو به صفحه اصلی
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+        );
+      }
     } else {
       setState(() => _isLoading = false);
       if (mounted) {

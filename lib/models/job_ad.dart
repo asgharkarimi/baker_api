@@ -1,5 +1,7 @@
 class JobAd {
   final String id;
+  final String userId;
+  final String userName;
   final String title;
   final String category;
   final int dailyBags;
@@ -14,6 +16,8 @@ class JobAd {
 
   JobAd({
     required this.id,
+    this.userId = '',
+    this.userName = '',
     required this.title,
     required this.category,
     required this.dailyBags,
@@ -28,8 +32,11 @@ class JobAd {
   });
 
   factory JobAd.fromJson(Map<String, dynamic> json) {
+    final user = json['user'] as Map<String, dynamic>?;
     return JobAd(
       id: json['id']?.toString() ?? '',
+      userId: json['userId']?.toString() ?? user?['id']?.toString() ?? '',
+      userName: user?['name'] ?? '',
       title: json['title'] ?? '',
       category: json['category'] ?? '',
       dailyBags: json['dailyBags'] ?? json['daily_bags'] ?? 0,

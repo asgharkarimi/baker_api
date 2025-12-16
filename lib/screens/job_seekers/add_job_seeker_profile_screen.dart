@@ -7,6 +7,7 @@ import '../../models/iran_provinces.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/currency_input_formatter.dart';
 import '../../utils/number_to_words.dart';
+import '../../services/api_service.dart';
 
 class AddJobSeekerProfileScreen extends StatefulWidget {
   const AddJobSeekerProfileScreen({super.key});
@@ -29,6 +30,7 @@ class _AddJobSeekerProfileScreenState extends State<AddJobSeekerProfileScreen> {
   File? _profileImage;
   final ImagePicker _picker = ImagePicker();
   String? _selectedProvince;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -62,12 +64,62 @@ class _AddJobSeekerProfileScreenState extends State<AddJobSeekerProfileScreen> {
     }
   }
 
-  void _submitProfile() {
-    if (_formKey.currentState!.validate()) {
+  Future<void> _submitProfile() async {
+    if (!_formKey.currentState!.validate()) return;
+    if (_selectedSkills.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('پروفایل با موفقیت ثبت شد')),
+        const SnackBar(content: Text('حداقل یک مهارت انتخاب کنید'), backgroundColor: Colors.red),
       );
-      Navigator.pop(context);
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      // آپلود عکس پروفایل
+      String? profileImageUrl;
+      if (_profileImage != null) {
+        profileImageUrl = await ApiService.uploadImage(_profileImage!);
+      }
+
+      // حذف کاما از حقوق
+      final salaryText = _salaryController.text.replaceAll(',', '');
+      final salary = int.tryParse(salaryText) ?? 0;
+
+      final data = {
+        'name': '${_firstNameController.text} ${_lastNameController.text}',
+        'skills': _selectedSkills,
+        'expectedSalary': salary,
+        'province': _selectedProvince,
+        'location': _selectedProvince,
+        'isMarried': _isMarried,
+        'isSmoker': _isSmoker,
+        'hasAddiction': _hasAddiction,
+        if (profileImageUrl != null) 'profileImage': profileImageUrl,
+      };
+
+      final success = await ApiService.createJobSeeker(data);
+
+      if (mounted) {
+        setState(() => _isLoading = false);
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('پروفایل با موفقیت ثبت شد'), backgroundColor: Colors.green),
+          );
+          Navigator.pop(context, true);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('خطا در ثبت پروفایل'), backgroundColor: Colors.red),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('خطا: $e'), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 
@@ -246,8 +298,14 @@ class _AddJobSeekerProfileScreenState extends State<AddJobSeekerProfileScreen> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _submitProfile,
-                  child: Text('ثبت پروفایل'),
+                  onPressed: _isLoading ? null : _submitProfile,
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Text('ثبت پروفایل'),
                 ),
               ),
             ],

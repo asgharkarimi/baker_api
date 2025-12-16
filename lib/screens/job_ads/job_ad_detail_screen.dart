@@ -414,13 +414,19 @@ class _JobAdDetailScreenState extends State<JobAdDetailScreen> {
             label: 'پیام',
             color: const Color(0xFF9C27B0),
             onTap: () {
+              if (widget.ad.userId.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('امکان ارسال پیام وجود ندارد')),
+                );
+                return;
+              }
               Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (_) => ChatScreen(
-                    userId: '1',
-                    userName: 'کارفرما',
-                    userAvatar: 'ک',
+                    recipientId: widget.ad.userId,
+                    recipientName: widget.ad.userName.isNotEmpty ? widget.ad.userName : 'کارفرما',
+                    recipientAvatar: widget.ad.userName.isNotEmpty ? widget.ad.userName[0] : 'ک',
                   ),
                 ),
               );

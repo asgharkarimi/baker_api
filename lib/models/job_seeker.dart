@@ -35,10 +35,16 @@ class JobSeeker {
   bool get hasAddiction => false;
 
   factory JobSeeker.fromJson(Map<String, dynamic> json) {
+    // عکس پروفایل از user یا از خود کارجو
+    String? profileImg = json['profileImage'] ?? json['profile_image'];
+    if (profileImg == null && json['user'] != null) {
+      profileImg = json['user']['profileImage'] ?? json['user']['profile_image'];
+    }
+    
     return JobSeeker(
       id: json['id']?.toString() ?? '',
       name: json['name'] ?? '',
-      profileImage: json['profileImage'] ?? json['profile_image'],
+      profileImage: profileImg,
       age: json['age'],
       experience: json['experience'] ?? 0,
       skills: json['skills'] != null ? List<String>.from(json['skills']) : [],

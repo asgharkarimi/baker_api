@@ -48,10 +48,30 @@ const JobSeeker = sequelize.define('JobSeeker', {
     type: DataTypes.STRING,
     field: 'profile_image'
   },
+  isMarried: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    field: 'is_married'
+  },
+  isSmoker: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    field: 'is_smoker'
+  },
+  hasAddiction: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    field: 'has_addiction'
+  },
   isActive: {
     type: DataTypes.BOOLEAN,
     defaultValue: true,
     field: 'is_active'
+  },
+  isApproved: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    field: 'is_approved'
   }
 }, {
   tableName: 'job_seekers'

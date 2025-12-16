@@ -6,13 +6,24 @@ const path = require('path');
 const fs = require('fs');
 
 // آپلود تک عکس
-router.post('/image', auth, uploadImage.single('image'), async (req, res) => {
+router.post('/image', auth, (req, res, next) => {
+  console.log('📤 Upload request received');
+  uploadImage.single('image')(req, res, (err) => {
+    if (err) {
+      console.log('❌ Multer error:', err.message);
+      return res.status(400).json({ success: false, message: err.message });
+    }
+    next();
+  });
+}, async (req, res) => {
   try {
+    console.log('📁 File:', req.file);
     if (!req.file) {
       return res.status(400).json({ success: false, message: 'فایلی انتخاب نشده' });
     }
     
     const fileUrl = `/uploads/images/${req.file.filename}`;
+    console.log('✅ Upload success:', fileUrl);
     res.json({ 
       success: true, 
       data: { 
@@ -23,6 +34,7 @@ router.post('/image', auth, uploadImage.single('image'), async (req, res) => {
       }
     });
   } catch (error) {
+    console.log('❌ Upload error:', error.message);
     res.status(500).json({ success: false, message: error.message });
   }
 });
