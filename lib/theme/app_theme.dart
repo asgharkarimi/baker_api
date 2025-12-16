@@ -120,7 +120,7 @@ class AppTheme {
       ),
 
       // تنظیمات کارت‌ها
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: white,
         elevation: 2,
         shape: RoundedRectangleBorder(

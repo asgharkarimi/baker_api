@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../services/auth_service.dart';
+import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
 import '../home/home_screen.dart';
 
@@ -14,7 +14,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final _phoneController = TextEditingController();
   final _codeController = TextEditingController();
-  final _authService = AuthService();
   bool _codeSent = false;
   bool _isLoading = false;
 
@@ -29,15 +28,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
-    
-    final success = await _authService.sendVerificationCode(_phoneController.text);
-    
+
+    final result = await ApiService.sendVerificationCode(_phoneController.text);
+
     setState(() => _isLoading = false);
 
-    if (success && mounted) {
+    if (result['success'] == true && mounted) {
       setState(() => _codeSent = true);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('کد تایید به شماره ${_phoneController.text} ارسال شد')),
+      );
+      if (result['code'] != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('کد تایید: ${result['code']}')),
+        );
+      }
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result['message'] ?? 'خطا در ارسال کد')),
       );
     }
   }
@@ -46,25 +54,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
-    
-    final success = await _authService.verifyCode(
+
+    final result = await ApiService.verifyCode(
       _phoneController.text,
       _codeController.text,
     );
-    
-    if (success) {
-      await _authService.login(_phoneController.text, 'user_${_phoneController.text}');
-      
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => HomeScreen()),
-        );
-      }
+
+    if (result['success'] == true && mounted) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+      );
     } else {
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('کد وارد شده اشتباه است')),
+          SnackBar(content: Text(result['message'] ?? 'کد وارد شده اشتباه است')),
         );
       }
     }
@@ -76,12 +80,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(
-          title: Text('ثبت نام'),
+          title: const Text('ثبت نام'),
         ),
         body: SafeArea(
           child: Center(
             child: SingleChildScrollView(
-              padding: EdgeInsets.all(24),
+              padding: const EdgeInsets.all(24),
               child: Form(
                 key: _formKey,
                 child: Column(
@@ -92,17 +96,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       size: 80,
                       color: AppTheme.primaryGreen,
                     ),
-                    SizedBox(height: 24),
+                    const SizedBox(height: 24),
                     Text(
                       'ایجاد حساب کاربری',
                       style: Theme.of(context).textTheme.displaySmall,
                     ),
-                    SizedBox(height: 48),
+                    const SizedBox(height: 48),
                     TextFormField(
                       controller: _phoneController,
                       keyboardType: TextInputType.phone,
                       enabled: !_codeSent,
-                      decoration: InputDecoration(
+                      decoration: const InputDecoration(
                         labelText: 'شماره موبایل',
                         prefixIcon: Icon(Icons.phone),
                       ),
@@ -117,11 +121,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       },
                     ),
                     if (_codeSent) ...[
-                      SizedBox(height: 16),
+                      const SizedBox(height: 16),
                       TextFormField(
                         controller: _codeController,
                         keyboardType: TextInputType.number,
-                        decoration: InputDecoration(
+                        decoration: const InputDecoration(
                           labelText: 'کد تایید',
                           prefixIcon: Icon(Icons.lock),
                           hintText: 'کد ارسال شده را وارد کنید',
@@ -134,7 +138,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         },
                       ),
                     ],
-                    SizedBox(height: 24),
+                    const SizedBox(height: 24),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(

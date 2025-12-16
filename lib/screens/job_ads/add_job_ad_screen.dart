@@ -5,6 +5,7 @@ import '../../models/iran_provinces.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/currency_input_formatter.dart';
 import '../../utils/number_to_words.dart';
+import '../../services/api_service.dart';
 
 class AddJobAdScreen extends StatefulWidget {
   const AddJobAdScreen({super.key});
@@ -23,6 +24,7 @@ class _AddJobAdScreenState extends State<AddJobAdScreen> {
   String? _selectedCategory;
   String? _selectedProvince;
   String _salaryWords = '';
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -34,12 +36,56 @@ class _AddJobAdScreenState extends State<AddJobAdScreen> {
     super.dispose();
   }
 
-  void _submitAd() {
-    if (_formKey.currentState!.validate()) {
+  int _parseSalary(String value) {
+    return int.tryParse(value.replaceAll(',', '')) ?? 0;
+  }
+
+  Future<void> _submitAd() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final success = await ApiService.createJobAd({
+        'title': _titleController.text,
+        'category': _selectedCategory,
+        'dailyBags': int.tryParse(_dailyBagsController.text) ?? 0,
+        'salary': _parseSalary(_salaryController.text),
+        'location': _selectedProvince,
+        'phoneNumber': _phoneController.text,
+        'description': _descriptionController.text,
+      });
+
+      if (!mounted) return;
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('آگهی با موفقیت ثبت شد و پس از تایید نمایش داده می‌شود'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pop(context, true);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('خطا در ثبت آگهی. لطفاً دوباره تلاش کنید'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('آگهی با موفقیت ثبت شد')),
+        SnackBar(
+          content: Text('خطا: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
-      Navigator.pop(context);
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -49,25 +95,25 @@ class _AddJobAdScreenState extends State<AddJobAdScreen> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(
-          title: Text('درج آگهی نیازمند همکار'),
+          title: const Text('درج آگهی نیازمند همکار'),
         ),
         body: Form(
           key: _formKey,
           child: ListView(
-            padding: EdgeInsets.all(16),
+            padding: const EdgeInsets.all(16),
             children: [
               TextFormField(
                 controller: _titleController,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'عنوان آگهی',
                   prefixIcon: Icon(Icons.title),
                 ),
                 validator: (v) => v?.isEmpty ?? true ? 'عنوان را وارد کنید' : null,
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 value: _selectedCategory,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'تخصص مورد نیاز',
                   prefixIcon: Icon(Icons.category),
                 ),
@@ -86,26 +132,25 @@ class _AddJobAdScreenState extends State<AddJobAdScreen> {
                 onChanged: (value) => setState(() => _selectedCategory = value),
                 validator: (v) => v == null ? 'تخصص را انتخاب کنید' : null,
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               TextFormField(
                 controller: _dailyBagsController,
                 keyboardType: TextInputType.number,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'تعداد کارکرد روزانه (کیسه)',
                   prefixIcon: Icon(Icons.shopping_bag),
                 ),
                 validator: (v) =>
                     v?.isEmpty ?? true ? 'تعداد کارکرد روزانه را وارد کنید' : null,
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               TextFormField(
                 controller: _salaryController,
                 keyboardType: TextInputType.number,
                 inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
                   CurrencyInputFormatter(),
                 ],
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'حقوق هفتگی (تومان)',
                   prefixIcon: Icon(Icons.attach_money),
                 ),
@@ -118,7 +163,7 @@ class _AddJobAdScreenState extends State<AddJobAdScreen> {
               ),
               if (_salaryWords.isNotEmpty)
                 Padding(
-                  padding: EdgeInsets.only(top: 8, right: 16),
+                  padding: const EdgeInsets.only(top: 8, right: 16),
                   child: Text(
                     _salaryWords,
                     style: TextStyle(
@@ -127,10 +172,10 @@ class _AddJobAdScreenState extends State<AddJobAdScreen> {
                     ),
                   ),
                 ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 value: _selectedProvince,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'استان محل کار',
                   prefixIcon: Icon(Icons.location_on),
                 ),
@@ -149,32 +194,46 @@ class _AddJobAdScreenState extends State<AddJobAdScreen> {
                 onChanged: (value) => setState(() => _selectedProvince = value),
                 validator: (v) => v == null ? 'استان را انتخاب کنید' : null,
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               TextFormField(
                 controller: _phoneController,
                 keyboardType: TextInputType.phone,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'شماره تماس',
                   prefixIcon: Icon(Icons.phone),
                 ),
-                validator: (v) => v?.isEmpty ?? true ? 'شماره تماس را وارد کنید' : null,
+                validator: (v) {
+                  if (v?.isEmpty ?? true) return 'شماره تماس را وارد کنید';
+                  if (v!.length != 11) return 'شماره تماس باید ۱۱ رقم باشد';
+                  return null;
+                },
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               TextFormField(
                 controller: _descriptionController,
                 maxLines: 5,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'توضیحات',
                   prefixIcon: Icon(Icons.description),
                   alignLabelWithHint: true,
                 ),
               ),
-              SizedBox(height: 24),
+              const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
+                height: 50,
                 child: ElevatedButton(
-                  onPressed: _submitAd,
-                  child: Text('ثبت آگهی'),
+                  onPressed: _isLoading ? null : _submitAd,
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text('ثبت آگهی'),
                 ),
               ),
             ],

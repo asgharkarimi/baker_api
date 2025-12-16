@@ -1,0 +1,441 @@
+const API_URL = '/api';
+let token = localStorage.getItem('adminToken');
+let currentPage = 'dashboard';
+
+// DOM Elements
+const loginPage = document.getElementById('loginPage');
+const adminPanel = document.getElementById('adminPanel');
+const loginForm = document.getElementById('loginForm');
+const loginError = document.getElementById('loginError');
+const logoutBtn = document.getElementById('logoutBtn');
+const modal = document.getElementById('modal');
+const modalBody = document.getElementById('modalBody');
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+  if (token) {
+    showAdminPanel();
+  }
+  setupEventListeners();
+});
+
+function setupEventListeners() {
+  loginForm.addEventListener('submit', handleLogin);
+  logoutBtn.addEventListener('click', handleLogout);
+  
+  document.querySelectorAll('.sidebar nav a').forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      const page = e.target.dataset.page;
+      navigateTo(page);
+    });
+  });
+
+  document.querySelector('.close-btn').addEventListener('click', closeModal);
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeModal();
+  });
+
+  // Search & Filter listeners
+  document.getElementById('userSearch')?.addEventListener('input', debounce(() => loadUsers(), 500));
+  document.getElementById('userRoleFilter')?.addEventListener('change', () => loadUsers());
+  document.getElementById('jobAdSearch')?.addEventListener('input', debounce(() => loadJobAds(), 500));
+  document.getElementById('jobAdApproved')?.addEventListener('change', () => loadJobAds());
+  document.getElementById('notificationForm')?.addEventListener('submit', handleSendNotification);
+}
+
+// Auth
+async function handleLogin(e) {
+  e.preventDefault();
+  const phone = document.getElementById('loginPhone').value;
+  const password = document.getElementById('loginPassword').value;
+
+  try {
+    const res = await fetch(`${API_URL}/auth/admin-login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone, password })
+    });
+    const data = await res.json();
+    
+    if (data.success) {
+      token = data.token;
+      localStorage.setItem('adminToken', token);
+      showAdminPanel();
+    } else {
+      loginError.textContent = data.message || 'خطا در ورود';
+    }
+  } catch (err) {
+    loginError.textContent = 'خطا در اتصال به سرور';
+  }
+}
+
+function handleLogout() {
+  token = null;
+  localStorage.removeItem('adminToken');
+  adminPanel.classList.add('hidden');
+  loginPage.classList.remove('hidden');
+}
+
+function showAdminPanel() {
+  loginPage.classList.add('hidden');
+  adminPanel.classList.remove('hidden');
+  navigateTo('dashboard');
+}
+
+// Navigation
+function navigateTo(page) {
+  currentPage = page;
+  document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+  document.getElementById(`${page}Page`).classList.remove('hidden');
+  document.querySelectorAll('.sidebar nav a').forEach(a => a.classList.remove('active'));
+  document.querySelector(`[data-page="${page}"]`).classList.add('active');
+
+  switch(page) {
+    case 'dashboard': loadDashboard(); break;
+    case 'users': loadUsers(); break;
+    case 'jobAds': loadJobAds(); break;
+    case 'jobSeekers': loadJobSeekers(); break;
+    case 'bakeryAds': loadBakeryAds(); break;
+    case 'equipmentAds': loadEquipmentAds(); break;
+    case 'reviews': loadReviews(); break;
+    case 'notifications': loadUsersForNotification(); break;
+  }
+}
+
+// API Helper
+async function apiCall(endpoint, method = 'GET', body = null) {
+  const options = {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    }
+  };
+  if (body) options.body = JSON.stringify(body);
+  
+  const res = await fetch(`${API_URL}${endpoint}`, options);
+  return res.json();
+}
+
+// Dashboard
+async function loadDashboard() {
+  try {
+    const data = await apiCall('/admin/dashboard');
+    if (data.success) {
+      const { counts } = data.data;
+      document.getElementById('statsGrid').innerHTML = `
+        <div class="stat-card"><div class="icon">👥</div><div class="value">${counts.users}</div><div class="label">کاربران</div></div>
+        <div class="stat-card"><div class="icon">💼</div><div class="value">${counts.jobAds}</div><div class="label">آگهی شغلی</div></div>
+        <div class="stat-card"><div class="icon">🔍</div><div class="value">${counts.jobSeekers}</div><div class="label">کارجو</div></div>
+        <div class="stat-card"><div class="icon">🏪</div><div class="value">${counts.bakeryAds}</div><div class="label">آگهی نانوایی</div></div>
+        <div class="stat-card"><div class="icon">⚙️</div><div class="value">${counts.equipmentAds}</div><div class="label">تجهیزات</div></div>
+        <div class="stat-card"><div class="icon">⭐</div><div class="value">${counts.reviews}</div><div class="label">نظرات</div></div>
+      `;
+    }
+  } catch (err) {
+    console.error('Error loading dashboard:', err);
+  }
+}
+
+// Users
+async function loadUsers(page = 1) {
+  const search = document.getElementById('userSearch').value;
+  const role = document.getElementById('userRoleFilter').value;
+  
+  try {
+    const data = await apiCall(`/admin/users?page=${page}&search=${search}&role=${role}`);
+    if (data.success) {
+      renderUsersTable(data.data);
+      renderPagination('usersPagination', data.pages, page, loadUsers);
+    }
+  } catch (err) {
+    console.error('Error loading users:', err);
+  }
+}
+
+function renderUsersTable(users) {
+  document.getElementById('usersTable').innerHTML = `
+    <table>
+      <thead><tr><th>نام</th><th>موبایل</th><th>نقش</th><th>وضعیت</th><th>عملیات</th></tr></thead>
+      <tbody>
+        ${users.map(u => `
+          <tr>
+            <td>${u.name || '-'}</td>
+            <td>${u.phone}</td>
+            <td><span class="badge ${u.role === 'admin' ? 'badge-info' : 'badge-success'}">${u.role === 'admin' ? 'ادمین' : 'کاربر'}</span></td>
+            <td><span class="badge ${u.isActive ? 'badge-success' : 'badge-danger'}">${u.isActive ? 'فعال' : 'غیرفعال'}</span></td>
+            <td>
+              <button class="action-btn btn-edit" onclick="editUser('${u._id}')">ویرایش</button>
+              <button class="action-btn btn-delete" onclick="deleteUser('${u._id}')">حذف</button>
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+async function editUser(id) {
+  const role = prompt('نقش جدید (user/admin):');
+  if (role && ['user', 'admin'].includes(role)) {
+    await apiCall(`/admin/users/${id}`, 'PUT', { role });
+    loadUsers();
+  }
+}
+
+async function deleteUser(id) {
+  if (confirm('آیا مطمئن هستید؟')) {
+    await apiCall(`/admin/users/${id}`, 'DELETE');
+    loadUsers();
+  }
+}
+
+// Job Ads
+async function loadJobAds(page = 1) {
+  const search = document.getElementById('jobAdSearch').value;
+  const isApproved = document.getElementById('jobAdApproved').value;
+  
+  try {
+    const data = await apiCall(`/admin/job-ads?page=${page}&search=${search}&isApproved=${isApproved}`);
+    if (data.success) {
+      renderJobAdsTable(data.data);
+      renderPagination('jobAdsPagination', data.pages, page, loadJobAds);
+    }
+  } catch (err) {
+    console.error('Error loading job ads:', err);
+  }
+}
+
+function renderJobAdsTable(ads) {
+  document.getElementById('jobAdsTable').innerHTML = `
+    <table>
+      <thead><tr><th>عنوان</th><th>دسته‌بندی</th><th>حقوق</th><th>وضعیت</th><th>عملیات</th></tr></thead>
+      <tbody>
+        ${ads.map(ad => `
+          <tr>
+            <td>${ad.title}</td>
+            <td>${ad.category || '-'}</td>
+            <td>${ad.salary ? ad.salary.toLocaleString() + ' تومان' : '-'}</td>
+            <td><span class="badge ${ad.isApproved ? 'badge-success' : 'badge-warning'}">${ad.isApproved ? 'تایید شده' : 'در انتظار'}</span></td>
+            <td>
+              ${!ad.isApproved ? `<button class="action-btn btn-approve" onclick="approveJobAd('${ad._id}')">تایید</button>` : ''}
+              <button class="action-btn btn-delete" onclick="deleteJobAd('${ad._id}')">حذف</button>
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+async function approveJobAd(id) {
+  await apiCall(`/admin/job-ads/${id}/approve`, 'PUT');
+  loadJobAds();
+}
+
+async function deleteJobAd(id) {
+  if (confirm('آیا مطمئن هستید؟')) {
+    await apiCall(`/admin/job-ads/${id}`, 'DELETE');
+    loadJobAds();
+  }
+}
+
+// Job Seekers
+async function loadJobSeekers(page = 1) {
+  const search = document.getElementById('jobSeekerSearch')?.value || '';
+  try {
+    const data = await apiCall(`/admin/job-seekers?page=${page}&search=${search}`);
+    if (data.success) {
+      document.getElementById('jobSeekersTable').innerHTML = `
+        <table>
+          <thead><tr><th>نام</th><th>مهارت‌ها</th><th>حقوق درخواستی</th><th>عملیات</th></tr></thead>
+          <tbody>
+            ${data.data.map(s => `
+              <tr>
+                <td>${s.name || '-'}</td>
+                <td>${(s.skills || []).join('، ')}</td>
+                <td>${s.expectedSalary ? s.expectedSalary.toLocaleString() + ' تومان' : '-'}</td>
+                <td><button class="action-btn btn-delete" onclick="deleteJobSeeker('${s._id}')">حذف</button></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+      renderPagination('jobSeekersPagination', data.pages, page, loadJobSeekers);
+    }
+  } catch (err) { console.error(err); }
+}
+
+async function deleteJobSeeker(id) {
+  if (confirm('آیا مطمئن هستید؟')) {
+    await apiCall(`/admin/job-seekers/${id}`, 'DELETE');
+    loadJobSeekers();
+  }
+}
+
+// Bakery Ads
+async function loadBakeryAds(page = 1) {
+  const search = document.getElementById('bakeryAdSearch')?.value || '';
+  const type = document.getElementById('bakeryAdType')?.value || '';
+  try {
+    const data = await apiCall(`/admin/bakery-ads?page=${page}&search=${search}&type=${type}`);
+    if (data.success) {
+      document.getElementById('bakeryAdsTable').innerHTML = `
+        <table>
+          <thead><tr><th>عنوان</th><th>نوع</th><th>قیمت</th><th>عملیات</th></tr></thead>
+          <tbody>
+            ${data.data.map(ad => `
+              <tr>
+                <td>${ad.title}</td>
+                <td>${ad.type === 'sale' ? 'فروش' : 'اجاره'}</td>
+                <td>${ad.price ? ad.price.toLocaleString() + ' تومان' : '-'}</td>
+                <td><button class="action-btn btn-delete" onclick="deleteBakeryAd('${ad._id}')">حذف</button></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+      renderPagination('bakeryAdsPagination', data.pages, page, loadBakeryAds);
+    }
+  } catch (err) { console.error(err); }
+}
+
+async function deleteBakeryAd(id) {
+  if (confirm('آیا مطمئن هستید؟')) {
+    await apiCall(`/admin/bakery-ads/${id}`, 'DELETE');
+    loadBakeryAds();
+  }
+}
+
+// Equipment Ads
+async function loadEquipmentAds(page = 1) {
+  const search = document.getElementById('equipmentAdSearch')?.value || '';
+  try {
+    const data = await apiCall(`/admin/equipment-ads?page=${page}&search=${search}`);
+    if (data.success) {
+      document.getElementById('equipmentAdsTable').innerHTML = `
+        <table>
+          <thead><tr><th>عنوان</th><th>وضعیت</th><th>قیمت</th><th>عملیات</th></tr></thead>
+          <tbody>
+            ${data.data.map(ad => `
+              <tr>
+                <td>${ad.title}</td>
+                <td>${ad.condition === 'new' ? 'نو' : 'دست دوم'}</td>
+                <td>${ad.price ? ad.price.toLocaleString() + ' تومان' : '-'}</td>
+                <td><button class="action-btn btn-delete" onclick="deleteEquipmentAd('${ad._id}')">حذف</button></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+      renderPagination('equipmentAdsPagination', data.pages, page, loadEquipmentAds);
+    }
+  } catch (err) { console.error(err); }
+}
+
+async function deleteEquipmentAd(id) {
+  if (confirm('آیا مطمئن هستید؟')) {
+    await apiCall(`/admin/equipment-ads/${id}`, 'DELETE');
+    loadEquipmentAds();
+  }
+}
+
+// Reviews
+async function loadReviews(page = 1) {
+  const isApproved = document.getElementById('reviewApproved')?.value || '';
+  try {
+    const data = await apiCall(`/admin/reviews?page=${page}&isApproved=${isApproved}`);
+    if (data.success) {
+      document.getElementById('reviewsTable').innerHTML = `
+        <table>
+          <thead><tr><th>کاربر</th><th>امتیاز</th><th>متن</th><th>وضعیت</th><th>عملیات</th></tr></thead>
+          <tbody>
+            ${data.data.map(r => `
+              <tr>
+                <td>${r.userId?.name || '-'}</td>
+                <td>${'⭐'.repeat(r.rating)}</td>
+                <td>${r.comment?.substring(0, 50) || '-'}...</td>
+                <td><span class="badge ${r.isApproved ? 'badge-success' : 'badge-warning'}">${r.isApproved ? 'تایید شده' : 'در انتظار'}</span></td>
+                <td>
+                  ${!r.isApproved ? `<button class="action-btn btn-approve" onclick="approveReview('${r._id}')">تایید</button>` : ''}
+                  <button class="action-btn btn-delete" onclick="deleteReview('${r._id}')">حذف</button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+      renderPagination('reviewsPagination', data.pages, page, loadReviews);
+    }
+  } catch (err) { console.error(err); }
+}
+
+async function approveReview(id) {
+  await apiCall(`/admin/reviews/${id}/approve`, 'PUT');
+  loadReviews();
+}
+
+async function deleteReview(id) {
+  if (confirm('آیا مطمئن هستید؟')) {
+    await apiCall(`/admin/reviews/${id}`, 'DELETE');
+    loadReviews();
+  }
+}
+
+// Notifications
+async function loadUsersForNotification() {
+  try {
+    const data = await apiCall('/admin/users?limit=100');
+    if (data.success) {
+      const select = document.getElementById('notifUserId');
+      select.innerHTML = '<option value="all">همه کاربران</option>' +
+        data.data.map(u => `<option value="${u._id}">${u.name || u.phone}</option>`).join('');
+    }
+  } catch (err) { console.error(err); }
+}
+
+async function handleSendNotification(e) {
+  e.preventDefault();
+  const userId = document.getElementById('notifUserId').value;
+  const title = document.getElementById('notifTitle').value;
+  const message = document.getElementById('notifMessage').value;
+  const type = document.getElementById('notifType').value;
+
+  try {
+    const data = await apiCall('/admin/notifications/send', 'POST', { userId, title, message, type });
+    if (data.success) {
+      alert(data.message);
+      document.getElementById('notificationForm').reset();
+    }
+  } catch (err) {
+    alert('خطا در ارسال');
+  }
+}
+
+// Helpers
+function renderPagination(containerId, totalPages, currentPage, loadFn) {
+  const container = document.getElementById(containerId);
+  if (!container || totalPages <= 1) {
+    if (container) container.innerHTML = '';
+    return;
+  }
+  
+  let html = '';
+  for (let i = 1; i <= totalPages; i++) {
+    html += `<button class="${i === currentPage ? 'active' : ''}" onclick="${loadFn.name}(${i})">${i}</button>`;
+  }
+  container.innerHTML = html;
+}
+
+function debounce(fn, delay) {
+  let timeout;
+  return (...args) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => fn(...args), delay);
+  };
+}
+
+function closeModal() {
+  modal.classList.add('hidden');
+}

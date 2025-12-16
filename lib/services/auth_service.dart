@@ -1,47 +1,76 @@
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/material.dart';
+import 'api_service.dart';
 
-class AuthService {
-  static const String _keyIsLoggedIn = 'isLoggedIn';
-  static const String _keyPhoneNumber = 'phoneNumber';
-  static const String _keyUserId = 'userId';
+class AuthService extends ChangeNotifier {
+  bool _isLoggedIn = false;
+  Map<String, dynamic>? _currentUser;
+  bool _isLoading = false;
 
-  Future<bool> isLoggedIn() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_keyIsLoggedIn) ?? false;
+  bool get isLoggedIn => _isLoggedIn;
+  Map<String, dynamic>? get currentUser => _currentUser;
+  bool get isLoading => _isLoading;
+  String? get userName => _currentUser?['name'];
+  String? get userPhone => _currentUser?['phone'];
+
+  AuthService() {
+    _checkAuth();
   }
 
-  Future<void> login(String phoneNumber, String userId) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_keyIsLoggedIn, true);
-    await prefs.setString(_keyPhoneNumber, phoneNumber);
-    await prefs.setString(_keyUserId, userId);
+  Future<void> _checkAuth() async {
+    _isLoading = true;
+    notifyListeners();
+
+    final user = await ApiService.getCurrentUser();
+    if (user != null) {
+      _isLoggedIn = true;
+      _currentUser = user;
+    }
+
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  Future<Map<String, dynamic>> sendCode(String phone) async {
+    _isLoading = true;
+    notifyListeners();
+
+    final result = await ApiService.sendVerificationCode(phone);
+
+    _isLoading = false;
+    notifyListeners();
+
+    return result;
+  }
+
+  Future<Map<String, dynamic>> verifyCode(String phone, String code) async {
+    _isLoading = true;
+    notifyListeners();
+
+    final result = await ApiService.verifyCode(phone, code);
+
+    if (result['success'] == true) {
+      _isLoggedIn = true;
+      _currentUser = result['user'];
+    }
+
+    _isLoading = false;
+    notifyListeners();
+
+    return result;
   }
 
   Future<void> logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
+    await ApiService.logout();
+    _isLoggedIn = false;
+    _currentUser = null;
+    notifyListeners();
   }
 
-  Future<String?> getPhoneNumber() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_keyPhoneNumber);
-  }
-
-  Future<String?> getUserId() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_keyUserId);
-  }
-
-  // شبیه‌سازی ارسال کد تایید
-  Future<bool> sendVerificationCode(String phoneNumber) async {
-    await Future.delayed(Duration(seconds: 2));
-    return true;
-  }
-
-  // شبیه‌سازی تایید کد
-  Future<bool> verifyCode(String phoneNumber, String code) async {
-    await Future.delayed(Duration(seconds: 1));
-    // در حالت واقعی باید کد را با سرور چک کنید
-    return code == '1234';
+  Future<void> refreshUser() async {
+    final user = await ApiService.getCurrentUser();
+    if (user != null) {
+      _currentUser = user;
+      notifyListeners();
+    }
   }
 }

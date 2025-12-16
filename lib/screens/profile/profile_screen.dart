@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../services/auth_service.dart';
+import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
 import '../auth/login_screen.dart';
 import '../bookmarks/bookmarks_screen.dart';
@@ -13,8 +13,7 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  final _authService = AuthService();
-  String? _phoneNumber;
+  Map<String, dynamic>? _user;
 
   @override
   void initState() {
@@ -23,15 +22,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _loadUserData() async {
-    final phone = await _authService.getPhoneNumber();
-    setState(() => _phoneNumber = phone);
+    final user = await ApiService.getCurrentUser();
+    if (mounted) {
+      setState(() => _user = user);
+    }
   }
 
   Future<void> _logout() async {
-    await _authService.logout();
+    await ApiService.logout();
     if (mounted) {
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => LoginScreen()),
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
       );
     }
   }
@@ -43,7 +44,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Scaffold(
         body: CustomScrollView(
           slivers: [
-            // AppBar با gradient زیبا
             SliverAppBar(
               expandedHeight: 200,
               floating: false,
@@ -56,17 +56,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       end: Alignment.bottomRight,
                       colors: [
                         AppTheme.primaryGreen,
-                        AppTheme.primaryGreen.withOpacity(0.8),
+                        AppTheme.primaryGreen.withValues(alpha: 0.8),
                       ],
                     ),
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      SizedBox(height: 40),
-                      // آواتار با انیمیشن
+                      const SizedBox(height: 40),
                       TweenAnimationBuilder<double>(
-                        duration: Duration(milliseconds: 800),
+                        duration: const Duration(milliseconds: 800),
                         tween: Tween(begin: 0.0, end: 1.0),
                         curve: Curves.elasticOut,
                         builder: (context, value, child) {
@@ -76,11 +75,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           );
                         },
                         child: Container(
-                          padding: EdgeInsets.all(4),
+                          padding: const EdgeInsets.all(4),
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             border: Border.all(color: Colors.white, width: 3),
-                            boxShadow: [
+                            boxShadow: const [
                               BoxShadow(
                                 color: Colors.black26,
                                 blurRadius: 20,
@@ -99,10 +98,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         ),
                       ),
-                      SizedBox(height: 12),
+                      const SizedBox(height: 12),
                       Text(
-                        _phoneNumber ?? 'کاربر',
-                        style: TextStyle(
+                        _user?['name'] ?? _user?['phone'] ?? 'کاربر',
+                        style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
@@ -113,73 +112,71 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
             ),
-            
-            // محتوای اصلی
             SliverToBoxAdapter(
               child: Column(
                 children: [
-                  SizedBox(height: 20),
-            _buildMenuCard(
-              icon: Icons.work,
-              title: 'آگهی‌های من',
-              subtitle: 'مشاهده و مدیریت آگهی‌ها',
-              color: Colors.blue,
-              onTap: () {},
-            ),
-            _buildMenuCard(
-              icon: Icons.bookmark,
-              title: 'نشانک‌ها',
-              subtitle: 'آگهی‌های ذخیره شده',
-              color: Colors.amber,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => BookmarksScreen()),
-                );
-              },
-            ),
-            _buildMenuCard(
-              icon: Icons.settings,
-              title: 'تنظیمات',
-              subtitle: 'تنظیمات حساب کاربری',
-              color: Colors.grey,
-              onTap: () {},
-            ),
-            _buildMenuCard(
-              icon: Icons.info,
-              title: 'درباره ما',
-              subtitle: 'اطلاعات تماس و پشتیبانی',
-              color: AppTheme.primaryGreen,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => AboutScreen()),
-                );
-              },
-            ),
-            SizedBox(height: 20),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20),
-              child: ElevatedButton.icon(
-                onPressed: _logout,
-                icon: Icon(Icons.logout, color: Colors.white),
-                label: Text(
-                  'خروج از حساب کاربری',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
+                  const SizedBox(height: 20),
+                  _buildMenuCard(
+                    icon: Icons.work,
+                    title: 'آگهی‌های من',
+                    subtitle: 'مشاهده و مدیریت آگهی‌ها',
+                    color: Colors.blue,
+                    onTap: () {},
                   ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  minimumSize: Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                  _buildMenuCard(
+                    icon: Icons.bookmark,
+                    title: 'نشانک‌ها',
+                    subtitle: 'آگهی‌های ذخیره شده',
+                    color: Colors.amber,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const BookmarksScreen()),
+                      );
+                    },
                   ),
-                ),
-              ),
-            ),
-            SizedBox(height: 40),
+                  _buildMenuCard(
+                    icon: Icons.settings,
+                    title: 'تنظیمات',
+                    subtitle: 'تنظیمات حساب کاربری',
+                    color: Colors.grey,
+                    onTap: () {},
+                  ),
+                  _buildMenuCard(
+                    icon: Icons.info,
+                    title: 'درباره ما',
+                    subtitle: 'اطلاعات تماس و پشتیبانی',
+                    color: AppTheme.primaryGreen,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const AboutScreen()),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: ElevatedButton.icon(
+                      onPressed: _logout,
+                      icon: const Icon(Icons.logout, color: Colors.white),
+                      label: const Text(
+                        'خروج از حساب کاربری',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        minimumSize: const Size(double.infinity, 50),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 40),
                 ],
               ),
             ),
@@ -197,15 +194,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required VoidCallback onTap,
   }) {
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
-            offset: Offset(0, 2),
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -213,18 +210,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
         child: Padding(
-          padding: EdgeInsets.all(16),
+          padding: const EdgeInsets.all(16),
           child: Row(
             children: [
               Container(
-                padding: EdgeInsets.all(12),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(icon, color: color, size: 28),
               ),
-              SizedBox(width: 16),
+              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -237,7 +234,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         color: AppTheme.textDark,
                       ),
                     ),
-                    SizedBox(height: 4),
+                    const SizedBox(height: 4),
                     Text(
                       subtitle,
                       style: TextStyle(

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
-import '../services/auth_service.dart';
+import '../services/api_service.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/payment/payment_screen.dart';
 import '../screens/job_ads/add_job_ad_screen.dart';
@@ -12,8 +12,7 @@ class AddMenuFab extends StatelessWidget {
   const AddMenuFab({super.key});
 
   Future<bool> _checkAuth(BuildContext context) async {
-    final authService = AuthService();
-    final isLoggedIn = await authService.isLoggedIn();
+    final isLoggedIn = await ApiService.checkAuth();
     
     if (!isLoggedIn && context.mounted) {
       final result = await showDialog<bool>(
@@ -42,7 +41,7 @@ class AddMenuFab extends StatelessWidget {
           context,
           MaterialPageRoute(builder: (_) => const LoginScreen()),
         );
-        return await authService.isLoggedIn();
+        return await ApiService.checkAuth();
       }
       return false;
     }

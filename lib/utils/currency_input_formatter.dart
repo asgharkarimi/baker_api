@@ -1,6 +1,18 @@
 import 'package:flutter/services.dart';
 
 class CurrencyInputFormatter extends TextInputFormatter {
+  // تبدیل اعداد فارسی به انگلیسی
+  String _convertPersianToEnglish(String input) {
+    const persian = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+    const english = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+    
+    String result = input;
+    for (int i = 0; i < persian.length; i++) {
+      result = result.replaceAll(persian[i], english[i]);
+    }
+    return result;
+  }
+
   @override
   TextEditingValue formatEditUpdate(
     TextEditingValue oldValue,
@@ -10,8 +22,11 @@ class CurrencyInputFormatter extends TextInputFormatter {
       return newValue;
     }
 
+    // تبدیل اعداد فارسی به انگلیسی
+    String converted = _convertPersianToEnglish(newValue.text);
+    
     // حذف کاماها و فقط نگه داشتن اعداد
-    String digitsOnly = newValue.text.replaceAll(',', '');
+    String digitsOnly = converted.replaceAll(RegExp(r'[^0-9]'), '');
 
     // اگر چیزی غیر از عدد وارد شده، قبولش نکن
     if (digitsOnly.isEmpty) {

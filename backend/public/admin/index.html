@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>پنل مدیریت - اپلیکیشن نانوایی</title>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://cdn.jsdelivr.net/npm/vazirmatn@33.0.3/Vazirmatn-font-face.min.css" rel="stylesheet">
+</head>
+<body>
+  <!-- Login Page -->
+  <div id="loginPage" class="login-page">
+    <div class="login-box">
+      <h1>🍞 پنل مدیریت</h1>
+      <p>اپلیکیشن کاریابی نانوایی</p>
+      <form id="loginForm">
+        <input type="text" id="loginPhone" placeholder="شماره موبایل" required>
+        <input type="password" id="loginPassword" placeholder="رمز عبور" required>
+        <button type="submit">ورود</button>
+      </form>
+      <p id="loginError" class="error"></p>
+    </div>
+  </div>
+
+  <!-- Admin Panel -->
+  <div id="adminPanel" class="admin-panel hidden">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="logo">🍞 پنل مدیریت</div>
+      <nav>
+        <a href="#" data-page="dashboard" class="active">📊 داشبورد</a>
+        <a href="#" data-page="users">👥 کاربران</a>
+        <a href="#" data-page="jobAds">💼 آگهی‌های شغلی</a>
+        <a href="#" data-page="jobSeekers">🔍 کارجویان</a>
+        <a href="#" data-page="bakeryAds">🏪 آگهی نانوایی</a>
+        <a href="#" data-page="equipmentAds">⚙️ تجهیزات</a>
+        <a href="#" data-page="reviews">⭐ نظرات</a>
+        <a href="#" data-page="notifications">🔔 نوتیفیکیشن</a>
+      </nav>
+      <button id="logoutBtn" class="logout-btn">خروج</button>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Dashboard -->
+      <section id="dashboardPage" class="page">
+        <h2>داشبورد</h2>
+        <div class="stats-grid" id="statsGrid"></div>
+        <div class="charts-section">
+          <h3>آمار هفتگی</h3>
+          <div id="chartContainer" class="chart-container"></div>
+        </div>
+      </section>
+
+      <!-- Users -->
+      <section id="usersPage" class="page hidden">
+        <h2>مدیریت کاربران</h2>
+        <div class="toolbar">
+          <input type="text" id="userSearch" placeholder="جستجو...">
+          <select id="userRoleFilter">
+            <option value="">همه نقش‌ها</option>
+            <option value="user">کاربر</option>
+            <option value="admin">ادمین</option>
+          </select>
+        </div>
+        <div id="usersTable" class="table-container"></div>
+        <div id="usersPagination" class="pagination"></div>
+      </section>
+
+      <!-- Job Ads -->
+      <section id="jobAdsPage" class="page hidden">
+        <h2>آگهی‌های شغلی</h2>
+        <div class="toolbar">
+          <input type="text" id="jobAdSearch" placeholder="جستجو...">
+          <select id="jobAdApproved">
+            <option value="">همه</option>
+            <option value="true">تایید شده</option>
+            <option value="false">در انتظار تایید</option>
+          </select>
+        </div>
+        <div id="jobAdsTable" class="table-container"></div>
+        <div id="jobAdsPagination" class="pagination"></div>
+      </section>
+
+      <!-- Job Seekers -->
+      <section id="jobSeekersPage" class="page hidden">
+        <h2>کارجویان</h2>
+        <div class="toolbar">
+          <input type="text" id="jobSeekerSearch" placeholder="جستجو...">
+        </div>
+        <div id="jobSeekersTable" class="table-container"></div>
+        <div id="jobSeekersPagination" class="pagination"></div>
+      </section>
+
+      <!-- Bakery Ads -->
+      <section id="bakeryAdsPage" class="page hidden">
+        <h2>آگهی‌های نانوایی</h2>
+        <div class="toolbar">
+          <input type="text" id="bakeryAdSearch" placeholder="جستجو...">
+          <select id="bakeryAdType">
+            <option value="">همه</option>
+            <option value="sale">فروش</option>
+            <option value="rent">اجاره</option>
+          </select>
+        </div>
+        <div id="bakeryAdsTable" class="table-container"></div>
+        <div id="bakeryAdsPagination" class="pagination"></div>
+      </section>
+
+      <!-- Equipment Ads -->
+      <section id="equipmentAdsPage" class="page hidden">
+        <h2>تجهیزات</h2>
+        <div class="toolbar">
+          <input type="text" id="equipmentAdSearch" placeholder="جستجو...">
+        </div>
+        <div id="equipmentAdsTable" class="table-container"></div>
+        <div id="equipmentAdsPagination" class="pagination"></div>
+      </section>
+
+      <!-- Reviews -->
+      <section id="reviewsPage" class="page hidden">
+        <h2>نظرات</h2>
+        <div class="toolbar">
+          <select id="reviewApproved">
+            <option value="">همه</option>
+            <option value="true">تایید شده</option>
+            <option value="false">در انتظار تایید</option>
+          </select>
+        </div>
+        <div id="reviewsTable" class="table-container"></div>
+        <div id="reviewsPagination" class="pagination"></div>
+      </section>
+
+      <!-- Notifications -->
+      <section id="notificationsPage" class="page hidden">
+        <h2>ارسال نوتیفیکیشن</h2>
+        <form id="notificationForm" class="notification-form">
+          <select id="notifUserId">
+            <option value="all">همه کاربران</option>
+          </select>
+          <input type="text" id="notifTitle" placeholder="عنوان" required>
+          <textarea id="notifMessage" placeholder="متن پیام" required></textarea>
+          <select id="notifType">
+            <option value="info">اطلاع‌رسانی</option>
+            <option value="success">موفقیت</option>
+            <option value="warning">هشدار</option>
+            <option value="error">خطا</option>
+          </select>
+          <button type="submit">ارسال</button>
+        </form>
+      </section>
+    </main>
+  </div>
+
+  <!-- Modal -->
+  <div id="modal" class="modal hidden">
+    <div class="modal-content">
+      <span class="close-btn">&times;</span>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

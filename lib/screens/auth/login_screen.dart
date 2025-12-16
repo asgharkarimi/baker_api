@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../services/auth_service.dart';
+import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
 import '../home/home_screen.dart';
 import 'register_screen.dart';
@@ -15,7 +15,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _phoneController = TextEditingController();
   final _codeController = TextEditingController();
-  final _authService = AuthService();
   bool _codeSent = false;
   bool _isLoading = false;
 
@@ -30,15 +29,25 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
-    
-    final success = await _authService.sendVerificationCode(_phoneController.text);
-    
+
+    final result = await ApiService.sendVerificationCode(_phoneController.text);
+
     setState(() => _isLoading = false);
 
-    if (success && mounted) {
+    if (result['success'] == true && mounted) {
       setState(() => _codeSent = true);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('کد تایید ارسال شد')),
+        const SnackBar(content: Text('کد تایید ارسال شد')),
+      );
+      // در حالت توسعه کد رو نشون بده
+      if (result['code'] != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('کد تایید: ${result['code']}')),
+        );
+      }
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result['message'] ?? 'خطا در ارسال کد')),
       );
     }
   }
@@ -47,25 +56,21 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
-    
-    final success = await _authService.verifyCode(
+
+    final result = await ApiService.verifyCode(
       _phoneController.text,
       _codeController.text,
     );
-    
-    if (success) {
-      await _authService.login(_phoneController.text, 'user_${_phoneController.text}');
-      
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => HomeScreen()),
-        );
-      }
+
+    if (result['success'] == true && mounted) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+      );
     } else {
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('کد وارد شده اشتباه است')),
+          SnackBar(content: Text(result['message'] ?? 'کد وارد شده اشتباه است')),
         );
       }
     }
@@ -79,7 +84,7 @@ class _LoginScreenState extends State<LoginScreen> {
         body: SafeArea(
           child: Center(
             child: SingleChildScrollView(
-              padding: EdgeInsets.all(24),
+              padding: const EdgeInsets.all(24),
               child: Form(
                 key: _formKey,
                 child: Column(
@@ -90,24 +95,24 @@ class _LoginScreenState extends State<LoginScreen> {
                       size: 80,
                       color: AppTheme.primaryGreen,
                     ),
-                    SizedBox(height: 24),
+                    const SizedBox(height: 24),
                     Text(
                       'کاریابی نانوایی',
                       style: Theme.of(context).textTheme.displaySmall,
                     ),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
                     Text(
                       'ورود به حساب کاربری',
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: AppTheme.textGrey,
-                      ),
+                            color: AppTheme.textGrey,
+                          ),
                     ),
-                    SizedBox(height: 48),
+                    const SizedBox(height: 48),
                     TextFormField(
                       controller: _phoneController,
                       keyboardType: TextInputType.phone,
                       enabled: !_codeSent,
-                      decoration: InputDecoration(
+                      decoration: const InputDecoration(
                         labelText: 'شماره موبایل',
                         prefixIcon: Icon(Icons.phone),
                       ),
@@ -122,11 +127,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       },
                     ),
                     if (_codeSent) ...[
-                      SizedBox(height: 16),
+                      const SizedBox(height: 16),
                       TextFormField(
                         controller: _codeController,
                         keyboardType: TextInputType.number,
-                        decoration: InputDecoration(
+                        decoration: const InputDecoration(
                           labelText: 'کد تایید',
                           prefixIcon: Icon(Icons.lock),
                         ),
@@ -138,7 +143,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         },
                       ),
                     ],
-                    SizedBox(height: 24),
+                    const SizedBox(height: 24),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
@@ -159,16 +164,16 @@ class _LoginScreenState extends State<LoginScreen> {
                             : Text(_codeSent ? 'ورود' : 'ارسال کد'),
                       ),
                     ),
-                    SizedBox(height: 16),
+                    const SizedBox(height: 16),
                     TextButton(
                       onPressed: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (_) => RegisterScreen(),
+                            builder: (_) => const RegisterScreen(),
                           ),
                         );
                       },
-                      child: Text('حساب کاربری ندارید؟ ثبت نام کنید'),
+                      child: const Text('حساب کاربری ندارید؟ ثبت نام کنید'),
                     ),
                   ],
                 ),

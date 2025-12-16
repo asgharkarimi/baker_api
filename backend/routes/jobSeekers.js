@@ -1,0 +1,78 @@
+const express = require('express');
+const router = express.Router();
+const { Op } = require('sequelize');
+const { JobSeeker, User } = require('../models');
+const { auth } = require('../middleware/auth');
+
+// دریافت همه کارجویان
+router.get('/', async (req, res) => {
+  try {
+    const { page = 1, limit = 20, location, maxSalary, search } = req.query;
+    const where = { isActive: true };
+
+    if (location) where.location = { [Op.like]: `%${location}%` };
+    if (maxSalary) where.expectedSalary = { [Op.lte]: maxSalary };
+    if (search) where.name = { [Op.like]: `%${search}%` };
+
+    const { count, rows } = await JobSeeker.findAndCountAll({
+      where,
+      include: [{ model: User, as: 'user', attributes: ['id', 'name', 'phone'] }],
+      order: [['createdAt', 'DESC']],
+      offset: (page - 1) * limit,
+      limit: Number(limit)
+    });
+
+    res.json({ success: true, data: rows, total: count, page: Number(page), pages: Math.ceil(count / limit) });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// دریافت یک کارجو
+router.get('/:id', async (req, res) => {
+  try {
+    const seeker = await JobSeeker.findByPk(req.params.id, {
+      include: [{ model: User, as: 'user', attributes: ['id', 'name', 'phone'] }]
+    });
+    if (!seeker) return res.status(404).json({ success: false, message: 'کارجو یافت نشد' });
+    res.json({ success: true, data: seeker });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ثبت رزومه
+router.post('/', auth, async (req, res) => {
+  try {
+    const seeker = await JobSeeker.create({ ...req.body, userId: req.userId });
+    res.status(201).json({ success: true, data: seeker });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ویرایش رزومه
+router.put('/:id', auth, async (req, res) => {
+  try {
+    const seeker = await JobSeeker.findOne({ where: { id: req.params.id, userId: req.userId } });
+    if (!seeker) return res.status(404).json({ success: false, message: 'کارجو یافت نشد' });
+
+    await seeker.update(req.body);
+    res.json({ success: true, data: seeker });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// حذف رزومه
+router.delete('/:id', auth, async (req, res) => {
+  try {
+    const deleted = await JobSeeker.destroy({ where: { id: req.params.id, userId: req.userId } });
+    if (!deleted) return res.status(404).json({ success: false, message: 'کارجو یافت نشد' });
+    res.json({ success: true, message: 'رزومه حذف شد' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+module.exports = router;

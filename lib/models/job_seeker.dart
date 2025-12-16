@@ -1,31 +1,68 @@
 class JobSeeker {
   final String id;
-  final String firstName;
-  final String lastName;
+  final String name;
   final String? profileImage;
-  final bool isMarried;
+  final int? age;
+  final int experience;
   final List<String> skills;
   final String location;
   final int expectedSalary;
-  final double rating;
-  final bool isSmoker;
-  final bool hasAddiction;
+  final String? phoneNumber;
+  final String? description;
   final DateTime createdAt;
 
   JobSeeker({
     required this.id,
-    required this.firstName,
-    required this.lastName,
+    required this.name,
     this.profileImage,
-    required this.isMarried,
+    this.age,
+    this.experience = 0,
     required this.skills,
     required this.location,
     required this.expectedSalary,
-    this.rating = 0.0,
-    this.isSmoker = false,
-    this.hasAddiction = false,
+    this.phoneNumber,
+    this.description,
     DateTime? createdAt,
   }) : createdAt = createdAt ?? DateTime.now();
 
-  String get fullName => '$firstName $lastName';
+  // برای سازگاری با کد قبلی
+  String get firstName => name.split(' ').first;
+  String get lastName => name.split(' ').length > 1 ? name.split(' ').last : '';
+  String get fullName => name;
+  double get rating => 0.0;
+  bool get isMarried => false;
+  bool get isSmoker => false;
+  bool get hasAddiction => false;
+
+  factory JobSeeker.fromJson(Map<String, dynamic> json) {
+    return JobSeeker(
+      id: json['id']?.toString() ?? '',
+      name: json['name'] ?? '',
+      profileImage: json['profileImage'] ?? json['profile_image'],
+      age: json['age'],
+      experience: json['experience'] ?? 0,
+      skills: json['skills'] != null ? List<String>.from(json['skills']) : [],
+      location: json['location'] ?? '',
+      expectedSalary: json['expectedSalary'] ?? json['expected_salary'] ?? 0,
+      phoneNumber: json['phoneNumber'] ?? json['phone_number'],
+      description: json['description'],
+      createdAt: json['createdAt'] != null 
+          ? DateTime.parse(json['createdAt']) 
+          : DateTime.now(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+      'age': age,
+      'experience': experience,
+      'skills': skills,
+      'location': location,
+      'expectedSalary': expectedSalary,
+      'phoneNumber': phoneNumber,
+      'description': description,
+      'profileImage': profileImage,
+    };
+  }
 }
