@@ -3,15 +3,12 @@ const router = express.Router();
 const { Review, User } = require('../models');
 const { auth } = require('../middleware/auth');
 
-// دریافت نظرات یک آگهی
-router.get('/:targetType/:targetId', async (req, res) => {
+// دریافت نظرات کاربر فعلی (باید قبل از /:targetType/:targetId باشد!)
+router.get('/my/list', auth, async (req, res) => {
   try {
-    const { targetType, targetId } = req.params;
     const { page = 1, limit = 20 } = req.query;
-
     const { count, rows } = await Review.findAndCountAll({
-      where: { targetType, targetId, isApproved: true },
-      include: [{ model: User, as: 'user', attributes: ['id', 'name', 'profileImage'] }],
+      where: { userId: req.userId },
       order: [['createdAt', 'DESC']],
       offset: (page - 1) * limit,
       limit: Number(limit)
@@ -43,12 +40,15 @@ router.post('/', auth, async (req, res) => {
   }
 });
 
-// دریافت نظرات کاربر فعلی
-router.get('/my/list', auth, async (req, res) => {
+// دریافت نظرات یک آگهی (باید بعد از /my/list باشد!)
+router.get('/:targetType/:targetId', async (req, res) => {
   try {
+    const { targetType, targetId } = req.params;
     const { page = 1, limit = 20 } = req.query;
+
     const { count, rows } = await Review.findAndCountAll({
-      where: { userId: req.userId },
+      where: { targetType, targetId, isApproved: true },
+      include: [{ model: User, as: 'user', attributes: ['id', 'name', 'profileImage'] }],
       order: [['createdAt', 'DESC']],
       offset: (page - 1) * limit,
       limit: Number(limit)

@@ -13,56 +13,103 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int _selectedIndex = 0;
+  late PageController _pageController;
+  late AnimationController _fabAnimationController;
 
   final List<Widget> _screens = [
-    JobAdsListScreen(),
-    JobSeekersListScreen(),
-    MarketplaceScreen(),
-    ChatListScreen(),
-    ProfileScreen(),
+    const JobAdsListScreen(),
+    const JobSeekersListScreen(),
+    const MarketplaceScreen(),
+    const ChatListScreen(),
+    const ProfileScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+    _fabAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    _fabAnimationController.dispose();
+    super.dispose();
+  }
+
+  void _onTabTapped(int index) {
+    setState(() => _selectedIndex = index);
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        body: _screens[_selectedIndex],
-        bottomNavigationBar: BottomNavigationBar(
-          currentIndex: _selectedIndex,
-          onTap: (index) => setState(() => _selectedIndex = index),
-          type: BottomNavigationBarType.fixed,
-          selectedItemColor: AppTheme.primaryGreen,
-          unselectedItemColor: AppTheme.textGrey,
-          selectedFontSize: 10,
-          unselectedFontSize: 9,
-          iconSize: 24,
-          items: [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.work),
-              label: 'نیازمند همکار',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person_search),
-              label: 'جویندگان کار',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.shopping_bag),
-              label: 'بازار',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.chat_bubble_outline),
-              label: 'چت',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person),
-              label: 'پروفایل',
-            ),
-          ],
+        body: PageView(
+          controller: _pageController,
+          physics: const NeverScrollableScrollPhysics(),
+          children: _screens,
+        ),
+        bottomNavigationBar: Container(
+          decoration: BoxDecoration(
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.08),
+                blurRadius: 20,
+                offset: const Offset(0, -5),
+              ),
+            ],
+          ),
+          child: BottomNavigationBar(
+            currentIndex: _selectedIndex,
+            onTap: _onTabTapped,
+            type: BottomNavigationBarType.fixed,
+            selectedItemColor: AppTheme.primaryGreen,
+            unselectedItemColor: AppTheme.textGrey,
+            selectedFontSize: 10,
+            unselectedFontSize: 9,
+            iconSize: 24,
+            elevation: 0,
+            backgroundColor: Colors.white,
+            items: [
+              _buildNavItem(Icons.work_outline, Icons.work, 'نیازمند همکار', 0),
+              _buildNavItem(Icons.person_search_outlined, Icons.person_search, 'جویندگان کار', 1),
+              _buildNavItem(Icons.shopping_bag_outlined, Icons.shopping_bag, 'بازار', 2),
+              _buildNavItem(Icons.chat_bubble_outline, Icons.chat_bubble, 'چت', 3),
+              _buildNavItem(Icons.person_outline, Icons.person, 'پروفایل', 4),
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  BottomNavigationBarItem _buildNavItem(IconData icon, IconData activeIcon, String label, int index) {
+    return BottomNavigationBarItem(
+      icon: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: EdgeInsets.all(_selectedIndex == index ? 8 : 4),
+        decoration: BoxDecoration(
+          color: _selectedIndex == index 
+              ? AppTheme.primaryGreen.withValues(alpha: 0.1) 
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Icon(_selectedIndex == index ? activeIcon : icon),
+      ),
+      label: label,
     );
   }
 }

@@ -5,6 +5,7 @@ import '../../utils/number_formatter.dart';
 import '../../widgets/filter_bottom_sheet.dart';
 import '../../widgets/add_menu_fab.dart';
 import '../../widgets/empty_state_widget.dart';
+import '../../widgets/shimmer_loading.dart';
 import '../../services/api_service.dart';
 import 'job_seeker_detail_screen.dart';
 
@@ -96,7 +97,11 @@ class _JobSeekersListScreenState extends State<JobSeekersListScreen> {
           ],
         ),
         body: _isLoading
-            ? const Center(child: CircularProgressIndicator())
+            ? ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: 5,
+                itemBuilder: (_, __) => const JobSeekerShimmer(),
+              )
             : _seekers.isEmpty
             ? EmptyStateWidget(
                 icon: Icons.person_search_outlined,

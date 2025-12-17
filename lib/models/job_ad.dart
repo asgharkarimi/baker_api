@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 class JobAd {
   final String id;
   final String userId;
@@ -33,9 +35,19 @@ class JobAd {
 
   factory JobAd.fromJson(Map<String, dynamic> json) {
     final user = json['user'] as Map<String, dynamic>?;
+    // اول از user.id بخون، بعد از userId مستقیم
+    String finalUserId = '';
+    if (user != null && user['id'] != null) {
+      finalUserId = user['id'].toString();
+    } else if (json['userId'] != null) {
+      finalUserId = json['userId'].toString();
+    } else if (json['user_id'] != null) {
+      finalUserId = json['user_id'].toString();
+    }
+    debugPrint('📋 JobAd.fromJson - userId: $finalUserId, user: $user');
     return JobAd(
       id: json['id']?.toString() ?? '',
-      userId: json['userId']?.toString() ?? user?['id']?.toString() ?? '',
+      userId: finalUserId,
       userName: user?['name'] ?? '',
       title: json['title'] ?? '',
       category: json['category'] ?? '',

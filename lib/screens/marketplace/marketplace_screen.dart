@@ -5,6 +5,7 @@ import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/number_formatter.dart';
 import '../../widgets/add_menu_fab.dart';
+import '../../widgets/shimmer_loading.dart';
 import '../equipment/equipment_detail_screen.dart';
 import '../bakery/bakery_detail_screen.dart';
 import '../map/map_screen.dart';
@@ -592,7 +593,11 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
 
   Widget _buildEquipmentList() {
     if (_isLoadingEquipment) {
-      return Center(child: CircularProgressIndicator());
+      return ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: 4,
+        itemBuilder: (_, __) => const MarketplaceShimmer(),
+      );
     }
     if (_equipmentAds.isEmpty) {
       return Center(child: Text('آگهی تجهیزاتی یافت نشد'));
@@ -726,7 +731,11 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
 
   Widget _buildBakeryList() {
     if (_isLoadingBakery) {
-      return const Center(child: CircularProgressIndicator());
+      return ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: 4,
+        itemBuilder: (_, __) => const MarketplaceShimmer(),
+      );
     }
     if (_bakeryAds.isEmpty) {
       return Center(

@@ -95,20 +95,29 @@ class ReviewService {
   static Future<List<Review>> getMyReviews() async {
     try {
       final headers = await _getHeaders();
+      debugPrint('🔍 Fetching my reviews...');
+      debugPrint('🔑 Headers: $headers');
+      
       final response = await http.get(
         Uri.parse('$baseUrl/reviews/my/list'),
         headers: headers,
       );
+      
+      debugPrint('📥 Response status: ${response.statusCode}');
+      debugPrint('📥 Response body: ${response.body}');
+      
       final data = jsonDecode(response.body);
 
       if (data['success'] == true && data['data'] != null) {
+        debugPrint('✅ Found ${(data['data'] as List).length} reviews');
         return (data['data'] as List)
             .map((json) => Review.fromJson(json))
             .toList();
       }
+      debugPrint('⚠️ No reviews found or success=false');
       return [];
     } catch (e) {
-      debugPrint('Error fetching my reviews: $e');
+      debugPrint('❌ Error fetching my reviews: $e');
       return [];
     }
   }

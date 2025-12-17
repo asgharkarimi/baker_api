@@ -113,6 +113,21 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     final message = _messageController.text.trim();
     _messageController.clear();
 
+    debugPrint('📨 Sending message to recipientId: ${widget.recipientId}');
+    debugPrint('📨 My userId: $_myUserId');
+
+    // چک کردن معتبر بودن recipientId
+    final recipientIdInt = int.tryParse(widget.recipientId);
+    if (recipientIdInt == null || recipientIdInt <= 0) {
+      debugPrint('❌ Invalid recipientId: ${widget.recipientId}');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('خطا: شناسه گیرنده نامعتبر است'), backgroundColor: Colors.red),
+        );
+      }
+      return;
+    }
+
     setState(() {
       _messages.add({
         'id': DateTime.now().millisecondsSinceEpoch,
@@ -127,10 +142,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     _scrollToBottom();
 
     final success = await ApiService.sendMessage(
-      int.parse(widget.recipientId),
+      recipientIdInt,
       message,
       replyToId: _replyTo?['id'],
     );
+    debugPrint('📨 Send result: $success');
     if (!success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('خطا در ارسال پیام'), backgroundColor: Colors.red),

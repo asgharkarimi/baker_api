@@ -8,6 +8,7 @@ import '../models/job_ad.dart';
 import '../models/job_seeker.dart';
 import '../models/bakery_ad.dart';
 import '../models/equipment_ad.dart';
+import 'media_compressor.dart';
 
 class ApiService {
   // برای تست روی امولاتور اندروید از 10.0.2.2 استفاده کن
@@ -493,32 +494,42 @@ class ApiService {
 
   // ==================== Upload ====================
   
-  static Future<String?> uploadImage(File file) async {
+  /// آپلود عکس با فشرده‌سازی خودکار
+  static Future<String?> uploadImage(File file, {bool compress = true}) async {
     await _loadToken();
     try {
+      // فشرده‌سازی عکس قبل از آپلود
+      File uploadFile = file;
+      if (compress && MediaCompressor.needsCompression(file)) {
+        debugPrint('🗜️ Compressing image before upload...');
+        final compressed = await MediaCompressor.compressImage(file);
+        if (compressed != null) {
+          uploadFile = compressed;
+        }
+      }
+
       debugPrint('📤 Uploading to: $baseUrl/upload/image');
-      debugPrint('📁 File path: ${file.path}');
-      debugPrint('🔑 Token: $_token');
       
       final request = http.MultipartRequest('POST', Uri.parse('$baseUrl/upload/image'));
       request.headers['Authorization'] = 'Bearer $_token';
       
-      // تشخیص نوع فایل
-      String ext = file.path.split('.').last.toLowerCase();
+      String ext = uploadFile.path.split('.').last.toLowerCase();
       String mimeType = 'image/jpeg';
-      if (ext == 'png') mimeType = 'image/png';
-      else if (ext == 'gif') mimeType = 'image/gif';
-      else if (ext == 'webp') mimeType = 'image/webp';
+      if (ext == 'png') {
+        mimeType = 'image/png';
+      } else if (ext == 'gif') {
+        mimeType = 'image/gif';
+      } else if (ext == 'webp') {
+        mimeType = 'image/webp';
+      }
       
       request.files.add(await http.MultipartFile.fromPath(
         'image', 
-        file.path,
+        uploadFile.path,
         contentType: MediaType.parse(mimeType),
       ));
       
-      debugPrint('📤 Sending request...');
       final streamedResponse = await request.send();
-      debugPrint('📥 Status: ${streamedResponse.statusCode}');
       final response = await http.Response.fromStream(streamedResponse);
       debugPrint('📥 Upload response: ${response.body}');
       final data = jsonDecode(response.body);
@@ -534,13 +545,21 @@ class ApiService {
     }
   }
 
-  static Future<List<String>> uploadImages(List<File> files) async {
+  /// آپلود چند عکس با فشرده‌سازی خودکار
+  static Future<List<String>> uploadImages(List<File> files, {bool compress = true}) async {
     await _loadToken();
     try {
+      // فشرده‌سازی عکس‌ها
+      List<File> uploadFiles = files;
+      if (compress) {
+        debugPrint('🗜️ Compressing ${files.length} images...');
+        uploadFiles = await MediaCompressor.compressImages(files);
+      }
+
       final request = http.MultipartRequest('POST', Uri.parse('$baseUrl/upload/images'));
       request.headers['Authorization'] = 'Bearer $_token';
       
-      for (var file in files) {
+      for (var file in uploadFiles) {
         request.files.add(await http.MultipartFile.fromPath('images', file.path));
       }
       
@@ -553,7 +572,57 @@ class ApiService {
       }
       return [];
     } catch (e) {
+      debugPrint('❌ Upload images error: $e');
       return [];
+    }
+  }
+
+  /// آپلود ویدیو با فشرده‌سازی خودکار
+  static Future<String?> uploadVideo(
+    File file, {
+    bool compress = true,
+    void Function(double)? onProgress,
+  }) async {
+    await _loadToken();
+    try {
+      File uploadFile = file;
+      
+      // فشرده‌سازی ویدیو
+      if (compress) {
+        debugPrint('🗜️ Compressing video...');
+        final compressed = await MediaCompressor.compressVideo(
+          file,
+          onProgress: onProgress,
+        );
+        if (compressed != null) {
+          uploadFile = compressed;
+        }
+      }
+
+      debugPrint('📤 Uploading video: ${MediaCompressor.getFileSize(uploadFile)}');
+      
+      final request = http.MultipartRequest('POST', Uri.parse('$baseUrl/upload/video'));
+      request.headers['Authorization'] = 'Bearer $_token';
+      
+      request.files.add(await http.MultipartFile.fromPath(
+        'video', 
+        uploadFile.path,
+        contentType: MediaType.parse('video/mp4'),
+      ));
+      
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      debugPrint('📥 Video upload response: ${response.body}');
+      final data = jsonDecode(response.body);
+      
+      if (data['success'] == true) {
+        return data['data']['url'];
+      }
+      debugPrint('❌ Video upload failed: ${data['message']}');
+      return null;
+    } catch (e) {
+      debugPrint('❌ Video upload error: $e');
+      return null;
     }
   }
 

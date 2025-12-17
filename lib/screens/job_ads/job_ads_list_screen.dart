@@ -4,6 +4,7 @@ import '../../models/job_ad.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/number_formatter.dart';
 import '../../utils/time_ago.dart';
+import '../../utils/navigation_helper.dart';
 import '../../widgets/notification_badge.dart';
 import '../../widgets/time_filter_bottom_sheet.dart';
 import '../../widgets/add_menu_fab.dart';
@@ -235,181 +236,175 @@ class _JobAdsListScreenState extends State<JobAdsListScreen> {
   }
 
   Widget _buildJobAdCard(JobAd ad) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-            spreadRadius: 2,
-          ),
-        ],
-      ),
-      child: InkWell(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => JobAdDetailScreen(ad: ad),
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 15,
+              offset: const Offset(0, 5),
             ),
-          );
-        },
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => Nav.toDetail(context, JobAdDetailScreen(ad: ad)),
+            borderRadius: BorderRadius.circular(20),
+            child: Padding(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [
-                          Color(0xFF42A5F5),
-                          Color(0xFF64B5F6),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF42A5F5).withValues(alpha: 0.3),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
+                  // ردیف بالا: دسته‌بندی + زمان + فلش
+                  Row(
+                    children: [
+                      // دسته‌بندی
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
                         ),
-                      ],
-                    ),
-                    child: Text(
-                      ad.category,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF26A69A), Color(0xFF4DB6AC)],
+                          ),
+                          borderRadius: BorderRadius.circular(25),
+                        ),
+                        child: Text(
+                          ad.category,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
+                      const SizedBox(width: 10),
+                      // زمان
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 7,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.schedule,
+                              size: 15,
+                              color: Colors.grey.shade600,
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              TimeAgo.format(ad.createdAt),
+                              style: TextStyle(
+                                color: Colors.grey.shade600,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Spacer(),
+                      // فلش
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.arrow_back_ios_new,
+                          size: 14,
+                          color: Colors.grey.shade400,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  // عنوان
+                  Text(
+                    ad.title,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.textDark,
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(height: 14),
+                  // موقعیت و کیسه
+                  Row(
+                    children: [
+                      _buildInfoChip(Icons.location_on, ad.location),
+                      const SizedBox(width: 16),
+                      _buildInfoChip(Icons.inventory_2_outlined, '${ad.dailyBags} کیسه'),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  // حقوق
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                     decoration: BoxDecoration(
-                      color: AppTheme.primaryGreen.withValues(alpha: 0.1),
+                      color: const Color(0xFFE8F5E9),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
-                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
-                          Icons.access_time,
-                          size: 14,
-                          color: AppTheme.primaryGreen,
-                        ),
-                        const SizedBox(width: 4),
                         Text(
-                          TimeAgo.format(ad.createdAt),
+                          'حقوق هفتگی: ',
                           style: TextStyle(
-                            color: AppTheme.primaryGreen,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
+                            color: Colors.grey.shade600,
+                            fontSize: 14,
+                          ),
+                        ),
+                        Text(
+                          NumberFormatter.formatPrice(ad.salary),
+                          style: const TextStyle(
+                            color: Color(0xFF2E7D32),
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const Spacer(),
-                  Icon(
-                    Icons.arrow_forward_ios,
-                    size: 16,
-                    color: AppTheme.textGrey,
-                  ),
                 ],
               ),
-              const SizedBox(height: 12),
-              Text(
-                ad.title,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.textDark,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Icon(
-                    Icons.location_on_outlined,
-                    size: 16,
-                    color: AppTheme.textGrey,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    ad.location,
-                    style: TextStyle(
-                      color: AppTheme.textGrey,
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Icon(
-                    Icons.shopping_bag_outlined,
-                    size: 16,
-                    color: AppTheme.textGrey,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${ad.dailyBags} کیسه',
-                    style: TextStyle(
-                      color: AppTheme.textGrey,
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE8F5E9),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'حقوق هفتگی: ',
-                      style: TextStyle(
-                        color: AppTheme.textGrey,
-                        fontSize: 14,
-                      ),
-                    ),
-                    Text(
-                      NumberFormatter.formatPrice(ad.salary),
-                      style: const TextStyle(
-                        color: Color(0xFF1976D2),
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildInfoChip(IconData icon, String text) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16, color: Colors.grey.shade500),
+        const SizedBox(width: 4),
+        Text(
+          text,
+          style: TextStyle(
+            color: Colors.grey.shade600,
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
     );
   }
 }

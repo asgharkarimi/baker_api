@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
+import '../../widgets/shimmer_loading.dart';
 import 'chat_screen.dart';
 
 class ChatListScreen extends StatefulWidget {
@@ -71,7 +72,10 @@ class _ChatListScreenState extends State<ChatListScreen> {
         backgroundColor: const Color(0xFFE3F2FD),
         appBar: AppBar(title: const Text('پیام‌ها')),
         body: _isLoading
-            ? const Center(child: CircularProgressIndicator())
+            ? ListView.builder(
+                itemCount: 6,
+                itemBuilder: (_, __) => const ChatListShimmer(),
+              )
             : RefreshIndicator(
                 onRefresh: _loadConversations,
                 child: _conversations.isEmpty

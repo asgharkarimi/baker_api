@@ -629,9 +629,10 @@ class _JobAdDetailScreenState extends State<JobAdDetailScreen> {
             Expanded(
               child: ElevatedButton.icon(
                 onPressed: () {
-                  if (_ad.userId.isEmpty) {
+                  debugPrint('🔍 JobAd userId: "${_ad.userId}", userName: "${_ad.userName}"');
+                  if (_ad.userId.isEmpty || _ad.userId == '0' || _ad.userId == 'null') {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('امکان ارسال پیام وجود ندارد')),
+                      const SnackBar(content: Text('امکان ارسال پیام وجود ندارد - شناسه کارفرما نامعتبر است')),
                     );
                     return;
                   }
