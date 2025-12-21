@@ -8,6 +8,7 @@ import 'package:latlong2/latlong.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/currency_input_formatter.dart';
 import '../../utils/number_to_words.dart';
+import '../../services/api_service.dart';
 import '../map/location_picker_screen.dart';
 
 class AddEquipmentAdScreen extends StatefulWidget {
@@ -68,12 +69,82 @@ class _AddEquipmentAdScreenState extends State<AddEquipmentAdScreen> {
     return null;
   }
 
-  void _submitAd() {
+  bool _isSubmitting = false;
+
+  void _submitAd() async {
     if (_formKey.currentState!.validate()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('آگهی شما با موفقیت ثبت شد و پس از تایید مدیر منتشر خواهد شد')),
-      );
-      Navigator.pop(context);
+      if (_selectedImages.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('حداقل یک عکس اضافه کنید'), backgroundColor: Colors.red),
+        );
+        return;
+      }
+
+      setState(() => _isSubmitting = true);
+
+      try {
+        // آپلود عکس‌ها
+        List<String> imageUrls = [];
+        for (var image in _selectedImages) {
+          final url = await ApiService.uploadImage(image);
+          if (url != null) {
+            imageUrls.add(url);
+          }
+        }
+
+        if (imageUrls.isEmpty) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('خطا در آپلود عکس‌ها'), backgroundColor: Colors.red),
+            );
+            setState(() => _isSubmitting = false);
+          }
+          return;
+        }
+
+        // حذف کاما از قیمت
+        final priceStr = _priceController.text.replaceAll(',', '');
+        final price = int.tryParse(priceStr) ?? 0;
+
+        final adData = {
+          'title': _titleController.text,
+          'description': _descriptionController.text,
+          'price': price,
+          'phoneNumber': _phoneController.text,
+          'location': _selectedAddress ?? '',
+          'lat': _selectedLatLng?.latitude,
+          'lng': _selectedLatLng?.longitude,
+          'images': imageUrls,
+          'condition': 'used',
+        };
+
+        final success = await ApiService.createEquipmentAd(adData);
+
+        if (mounted) {
+          setState(() => _isSubmitting = false);
+          
+          if (success) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('آگهی شما با موفقیت ثبت شد و پس از تایید مدیر منتشر خواهد شد'),
+                backgroundColor: Colors.green,
+              ),
+            );
+            Navigator.pop(context, true);
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('خطا در ثبت آگهی'), backgroundColor: Colors.red),
+            );
+          }
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() => _isSubmitting = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('خطا: $e'), backgroundColor: Colors.red),
+          );
+        }
+      }
     }
   }
 
@@ -370,8 +441,14 @@ class _AddEquipmentAdScreenState extends State<AddEquipmentAdScreen> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _submitAd,
-                  child: Text('ثبت آگهی'),
+                  onPressed: _isSubmitting ? null : _submitAd,
+                  child: _isSubmitting
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Text('ثبت آگهی'),
                 ),
               ),
             ],

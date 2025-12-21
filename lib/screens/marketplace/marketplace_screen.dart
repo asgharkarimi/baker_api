@@ -605,127 +605,129 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     return RefreshIndicator(
       onRefresh: _loadEquipmentAds,
       child: ListView.builder(
-      padding: EdgeInsets.all(20),
-      itemCount: _equipmentAds.length,
-      itemBuilder: (context, index) {
-        final ad = _equipmentAds[index];
-        return Container(
-          margin: EdgeInsets.only(bottom: 20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.08),
-                blurRadius: 20,
-                offset: Offset(0, 4),
-                spreadRadius: 2,
-              ),
-            ],
-          ),
-          child: InkWell(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => EquipmentDetailScreen(ad: ad),
+        padding: EdgeInsets.all(16),
+        itemCount: _equipmentAds.length,
+        itemBuilder: (context, index) {
+          final ad = _equipmentAds[index];
+          return Container(
+            margin: EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 15,
+                  offset: Offset(0, 4),
                 ),
-              );
-            },
-            borderRadius: BorderRadius.circular(16),
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppTheme.background,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(
-                          Icons.settings,
-                          color: Color(0xFF1976D2),
-                          size: 24,
-                        ),
-                      ),
-                      SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          ad.title,
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.textDark,
-                          ),
-                        ),
-                      ),
-                      Icon(
-                        Icons.arrow_forward_ios,
-                        size: 16,
-                        color: AppTheme.textGrey,
-                      ),
-                    ],
+              ],
+            ),
+            child: InkWell(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => EquipmentDetailScreen(ad: ad),
                   ),
-                  SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.location_on_outlined,
-                        size: 16,
-                        color: AppTheme.textGrey,
-                      ),
-                      SizedBox(width: 4),
-                      Text(
-                        ad.location,
-                        style: TextStyle(
-                          color: AppTheme.textGrey,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 12),
-                  Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
+                );
+              },
+              borderRadius: BorderRadius.circular(16),
+              child: Padding(
+                padding: EdgeInsets.all(12),
+                child: Row(
+                  children: [
+                    // تصویر دستگاه
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: ad.images.isNotEmpty
+                          ? Image.network(
+                              ad.images.first.startsWith('http')
+                                  ? ad.images.first
+                                  : '${ApiService.serverUrl}${ad.images.first}',
+                              width: 100,
+                              height: 100,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Container(
+                                width: 100,
+                                height: 100,
+                                decoration: BoxDecoration(
+                                  color: Colors.teal.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(Icons.build, color: Colors.teal, size: 40),
+                              ),
+                            )
+                          : Container(
+                              width: 100,
+                              height: 100,
+                              decoration: BoxDecoration(
+                                color: Colors.teal.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(Icons.build, color: Colors.teal, size: 40),
+                            ),
                     ),
-                    decoration: BoxDecoration(
-                      color: AppTheme.background,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'قیمت: ',
-                          style: TextStyle(
-                            color: AppTheme.textGrey,
-                            fontSize: 14,
+                    SizedBox(width: 12),
+                    // اطلاعات
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            ad.title,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.textDark,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                        Text(
-                          NumberFormatter.formatPrice(ad.price),
-                          style: TextStyle(
-                            color: Color(0xFF1976D2),
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                          SizedBox(height: 8),
+                          Container(
+                            padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.teal.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              NumberFormatter.formatPrice(ad.price),
+                              style: TextStyle(
+                                color: Colors.teal,
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ),
-                        ),
-                      ],
+                          SizedBox(height: 6),
+                          Row(
+                            children: [
+                              Icon(Icons.location_on_outlined, size: 16, color: AppTheme.textGrey),
+                              SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  ad.provinceOrLocation,
+                                  style: TextStyle(
+                                    color: AppTheme.textGrey,
+                                    fontSize: 14,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                    Icon(Icons.arrow_forward_ios, size: 16, color: AppTheme.textGrey),
+                  ],
+                ),
               ),
             ),
-          ),
-        );
-      },
-    ),
+          );
+        },
+      ),
     );
   }
 
@@ -762,12 +764,12 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
   Widget _buildBakeryCard(BakeryAd ad) {
     final isSale = ad.type == BakeryAdType.sale;
     final color = isSale ? Colors.blue : Colors.purple;
-    
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.08),
@@ -777,141 +779,142 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
         ],
       ),
       child: InkWell(
-        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => BakeryDetailScreen(ad: ad))),
-        borderRadius: BorderRadius.circular(20),
-        child: Column(
-          children: [
-            // Image or placeholder
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-              child: ad.images.isNotEmpty
-                  ? Image.network(
-                      ad.images.first.startsWith('http') ? ad.images.first : '${ApiService.serverUrl}${ad.images.first}',
-                      height: 160,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _buildPlaceholder(color),
-                    )
-                  : _buildPlaceholder(color),
-            ),
-            // Content
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Type badge and title
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(colors: [color, color.withValues(alpha: 0.7)]),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          isSale ? '🏷️ فروش' : '🔑 رهن و اجاره',
-                          style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      const Spacer(),
-                      if (ad.images.length > 1)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        onTap: () => Navigator.push(
+            context, MaterialPageRoute(builder: (_) => BakeryDetailScreen(ad: ad))),
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              // تصویر نانوایی
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: ad.images.isNotEmpty
+                    ? Image.network(
+                        ad.images.first.startsWith('http')
+                            ? ad.images.first
+                            : '${ApiService.serverUrl}${ad.images.first}',
+                        width: 100,
+                        height: 100,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          width: 100,
+                          height: 100,
                           decoration: BoxDecoration(
-                            color: Colors.grey.shade200,
+                            color: color.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.photo_library, size: 14, color: Colors.grey),
-                              const SizedBox(width: 4),
-                              Text('${ad.images.length}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                            ],
-                          ),
+                          child: Icon(Icons.store, color: color, size: 40),
                         ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  // Title
-                  Text(
-                    ad.title,
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 8),
-                  // Location
-                  Row(
-                    children: [
-                      Icon(Icons.location_on, size: 16, color: Colors.red.shade400),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          ad.location,
-                          style: TextStyle(color: AppTheme.textGrey, fontSize: 13),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                      )
+                    : Container(
+                        width: 100,
+                        height: 100,
+                        decoration: BoxDecoration(
+                          color: color.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(Icons.store, color: color, size: 40),
+                      ),
+              ),
+              const SizedBox(width: 12),
+              // اطلاعات
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // نوع آگهی
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        isSale ? '🏷️ فروش' : '🔑 رهن و اجاره',
+                        style: TextStyle(
+                            color: color, fontSize: 11, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    // عنوان
+                    Text(
+                      ad.title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 10),
+                    // قیمت
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        isSale
+                            ? NumberFormatter.formatPrice(ad.salePrice ?? 0)
+                            : 'رهن: ${NumberFormatter.formatPrice(ad.rentDeposit ?? 0)}',
+                        style: TextStyle(
+                          color: color,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  // Info chips
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      if (ad.flourQuota != null && ad.flourQuota! > 0)
-                        _buildInfoChip(Icons.inventory_2, '${ad.flourQuota} کیسه آرد', Colors.deepOrange),
-                      if (ad.breadPrice != null && ad.breadPrice! > 0)
-                        _buildInfoChip(Icons.bakery_dining, NumberFormatter.formatPrice(ad.breadPrice!), Colors.brown),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  // Price
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: color.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
                     ),
-                    child: isSale
-                        ? Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text('قیمت فروش:', style: TextStyle(color: color, fontSize: 14)),
-                              Text(
-                                NumberFormatter.formatPrice(ad.salePrice ?? 0),
-                                style: TextStyle(color: color, fontSize: 16, fontWeight: FontWeight.bold),
-                              ),
-                            ],
-                          )
-                        : Column(
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text('رهن:', style: TextStyle(color: color, fontSize: 13)),
-                                  Text(NumberFormatter.formatPrice(ad.rentDeposit ?? 0), style: TextStyle(color: color, fontWeight: FontWeight.bold)),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text('اجاره ماهانه:', style: TextStyle(color: color, fontSize: 13)),
-                                  Text(NumberFormatter.formatPrice(ad.monthlyRent ?? 0), style: TextStyle(color: color, fontWeight: FontWeight.bold)),
-                                ],
-                              ),
-                            ],
+                    const SizedBox(height: 10),
+                    // سهمیه آرد و قیمت نان
+                    Row(
+                      children: [
+                        if (ad.flourQuota != null && ad.flourQuota! > 0) ...[
+                          Icon(Icons.inventory_2, size: 14, color: Colors.deepOrange),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${ad.flourQuota} کیسه',
+                            style: TextStyle(color: Colors.deepOrange, fontSize: 12),
                           ),
-                  ),
-                ],
+                          const SizedBox(width: 12),
+                        ],
+                        if (ad.breadPrice != null && ad.breadPrice! > 0) ...[
+                          Icon(Icons.bakery_dining, size: 14, color: Colors.brown),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${ad.breadPrice} تومان',
+                            style: TextStyle(color: Colors.brown, fontSize: 12),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    // استان
+                    Row(
+                      children: [
+                        Icon(Icons.location_on_outlined,
+                            size: 16, color: AppTheme.textGrey),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            ad.location.split('،').first.trim(),
+                            style: TextStyle(
+                              color: AppTheme.textGrey,
+                              fontSize: 14,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+              Icon(Icons.arrow_forward_ios, size: 16, color: AppTheme.textGrey),
+            ],
+          ),
         ),
       ),
     );

@@ -14,6 +14,7 @@ import '../../services/socket_service.dart';
 import '../../services/notification_manager.dart';
 import '../../services/media_cache_service.dart';
 import '../../widgets/cached_media.dart';
+import '../profile/view_profile_screen.dart';
 
 class ChatScreen extends StatefulWidget {
   final String recipientId;
@@ -375,6 +376,27 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     setState(() => _replyTo = null);
   }
 
+  // نمایش پروفایل کاربر
+  Future<void> _showUserProfile() async {
+    try {
+      final user = await ApiService.getChatUser(int.parse(widget.recipientId));
+      if (user != null && mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ViewProfileScreen(user: user),
+          ),
+        );
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('خطا در دریافت اطلاعات کاربر')),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error loading user profile: $e');
+    }
+  }
+
   Future<void> _blockUser() async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -589,48 +611,51 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
             icon: const Icon(Icons.arrow_back),
             onPressed: () => Navigator.pop(context),
           ),
-          title: Row(
-            children: [
-              Stack(
-                children: [
-                  CircleAvatar(
-                    radius: 20,
-                    backgroundColor: const Color(0xFF1976D2),
-                    backgroundImage: (widget.recipientImage != null && widget.recipientImage!.isNotEmpty)
-                        ? NetworkImage('${ApiService.serverUrl}${widget.recipientImage}')
-                        : null,
-                    child: (widget.recipientImage == null || widget.recipientImage!.isEmpty)
-                        ? Text(widget.recipientAvatar, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold))
-                        : null,
-                  ),
-                  if (_isOnline)
-                    Positioned(
-                      right: 0,
-                      bottom: 0,
-                      child: Container(
-                        width: 12,
-                        height: 12,
-                        decoration: BoxDecoration(
-                          color: Colors.green,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
+          title: GestureDetector(
+            onTap: () => _showUserProfile(),
+            child: Row(
+              children: [
+                Stack(
+                  children: [
+                    CircleAvatar(
+                      radius: 20,
+                      backgroundColor: const Color(0xFF1976D2),
+                      backgroundImage: (widget.recipientImage != null && widget.recipientImage!.isNotEmpty)
+                          ? NetworkImage('${ApiService.serverUrl}${widget.recipientImage}')
+                          : null,
+                      child: (widget.recipientImage == null || widget.recipientImage!.isEmpty)
+                          ? Text(widget.recipientAvatar, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold))
+                          : null,
+                    ),
+                    if (_isOnline)
+                      Positioned(
+                        right: 0,
+                        bottom: 0,
+                        child: Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: Colors.green,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                          ),
                         ),
                       ),
+                  ],
+                ),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(widget.recipientName, style: const TextStyle(fontSize: 16)),
+                    Text(
+                      _isTyping ? 'در حال نوشتن...' : (_isOnline ? 'آنلاین' : _formatLastSeen(_lastSeen)),
+                      style: TextStyle(fontSize: 12, color: _isTyping ? Colors.green : Colors.white70),
                     ),
-                ],
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(widget.recipientName, style: const TextStyle(fontSize: 16)),
-                  Text(
-                    _isTyping ? 'در حال نوشتن...' : (_isOnline ? 'آنلاین' : _formatLastSeen(_lastSeen)),
-                    style: TextStyle(fontSize: 12, color: _isTyping ? Colors.green : Colors.white70),
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
           actions: [
             PopupMenuButton<String>(

@@ -19,8 +19,9 @@ class ViewProfileScreen extends StatelessWidget {
         body: CustomScrollView(
           slivers: [
             SliverAppBar(
-              expandedHeight: 280,
+              expandedHeight: 220,
               pinned: true,
+              backgroundColor: AppTheme.primaryGreen,
               flexibleSpace: FlexibleSpaceBar(
                 background: Container(
                   decoration: BoxDecoration(
@@ -33,52 +34,43 @@ class ViewProfileScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-                  child: SafeArea(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const SizedBox(height: 20),
-                        CachedAvatar(
-                          imageUrl: user['profileImage'] != null
-                              ? '${ApiService.serverUrl}${user['profileImage']}'
-                              : null,
-                          radius: 55,
-                          name: user['name'],
-                          backgroundColor: Colors.white,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      CachedAvatar(
+                        imageUrl: user['profileImage'] != null
+                            ? '${ApiService.serverUrl}${user['profileImage']}'
+                            : null,
+                        radius: 40,
+                        name: user['name'],
+                        backgroundColor: Colors.white,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        user['name'] ?? 'کاربر',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
                         ),
-                        const SizedBox(height: 16),
-                        Text(
-                          user['name'] ?? 'کاربر',
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                        if (user['bio'] != null && user['bio'].toString().isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 8),
-                            child: Text(
-                              user['bio'],
-                              style: const TextStyle(color: Colors.white70, fontSize: 14),
-                              textAlign: TextAlign.center,
-                              maxLines: 2,
-                            ),
-                          ),
-                        if (user['city'] != null || user['province'] != null)
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                      ),
+                      if (user['city'] != null || user['province'] != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.location_on, color: Colors.white70, size: 16),
-                              const SizedBox(width: 4),
+                              const Icon(Icons.location_on, color: Colors.white70, size: 12),
+                              const SizedBox(width: 2),
                               Text(
                                 [user['city'], user['province']].where((e) => e != null).join('، '),
-                                style: const TextStyle(color: Colors.white70, fontSize: 13),
+                                style: const TextStyle(color: Colors.white70, fontSize: 11),
                               ),
                             ],
                           ),
-                      ],
-                    ),
+                        ),
+                      const SizedBox(height: 20),
+                    ],
                   ),
                 ),
               ),
