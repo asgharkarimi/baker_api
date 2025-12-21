@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { auth } = require('../middleware/auth');
-const { uploadImage, uploadVideo, uploadMultiple } = require('../middleware/upload');
+const { uploadImage, uploadVideo, uploadMultiple, compressImage } = require('../middleware/upload');
 const path = require('path');
 const fs = require('fs');
 
@@ -22,15 +22,20 @@ router.post('/image', auth, (req, res, next) => {
       return res.status(400).json({ success: false, message: 'فایلی انتخاب نشده' });
     }
     
-    const fileUrl = `/uploads/images/${req.file.filename}`;
+    // فشرده‌سازی تصویر روی سرور
+    const originalPath = req.file.path;
+    const compressedPath = await compressImage(originalPath);
+    const filename = path.basename(compressedPath);
+    
+    const fileUrl = `/uploads/images/${filename}`;
     console.log('✅ Upload success:', fileUrl);
     res.json({ 
       success: true, 
       data: { 
         url: fileUrl,
-        filename: req.file.filename,
+        filename: filename,
         originalName: req.file.originalname,
-        size: req.file.size
+        size: fs.statSync(compressedPath).size
       }
     });
   } catch (error) {
@@ -46,12 +51,18 @@ router.post('/images', auth, uploadMultiple.array('images', 10), async (req, res
       return res.status(400).json({ success: false, message: 'فایلی انتخاب نشده' });
     }
     
-    const files = req.files.map(file => ({
-      url: `/uploads/images/${file.filename}`,
-      filename: file.filename,
-      originalName: file.originalname,
-      size: file.size
-    }));
+    // فشرده‌سازی همه تصاویر
+    const files = [];
+    for (const file of req.files) {
+      const compressedPath = await compressImage(file.path);
+      const filename = path.basename(compressedPath);
+      files.push({
+        url: `/uploads/images/${filename}`,
+        filename: filename,
+        originalName: file.originalname,
+        size: fs.statSync(compressedPath).size
+      });
+    }
     
     res.json({ success: true, data: files });
   } catch (error) {

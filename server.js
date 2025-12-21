@@ -5,13 +5,20 @@ const fs = require('fs');
 const dotenv = require('dotenv');
 const http = require('http');
 const { Server } = require('socket.io');
+const rateLimit = require('express-rate-limit');
+const helmet = require('helmet');
 
 dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: '*', methods: ['GET', 'POST'] }
+  cors: { 
+    origin: process.env.NODE_ENV === 'production' 
+      ? ['https://bakerjobs.ir', 'https://www.bakerjobs.ir'] 
+      : '*',
+    methods: ['GET', 'POST'] 
+  }
 });
 
 const { sequelize } = require('./models');
@@ -29,10 +36,33 @@ uploadDirs.forEach(dir => {
 // ذخیره کاربران آنلاین
 const onlineUsers = new Map();
 
+// Security Middleware
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
+
+// Rate Limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 دقیقه
+  max: 100, // حداکثر 100 درخواست
+  message: { success: false, message: 'تعداد درخواست‌ها بیش از حد مجاز است' }
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 دقیقه
+  max: 10, // حداکثر 10 تلاش برای ورود
+  message: { success: false, message: 'تعداد تلاش‌های ورود بیش از حد مجاز است' }
+});
+
 // Middleware
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production' 
+    ? ['https://bakerjobs.ir', 'https://www.bakerjobs.ir'] 
+    : '*'
+}));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(limiter);
 
 // Static files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -44,7 +74,7 @@ app.get('/admin', (req, res) => {
 });
 
 // API Routes
-app.use('/api/auth', require('./routes/auth'));
+app.use('/api/auth', authLimiter, require('./routes/auth'));
 app.use('/api/job-ads', require('./routes/jobAds'));
 app.use('/api/job-seekers', require('./routes/jobSeekers'));
 app.use('/api/bakery-ads', require('./routes/bakeryAds'));

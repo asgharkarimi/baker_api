@@ -2,6 +2,7 @@ const multer = require('multer');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const fs = require('fs');
+const sharp = require('sharp');
 
 // Create uploads directory if not exists
 const uploadsDir = path.join(__dirname, '../uploads');
@@ -13,6 +14,30 @@ const videosDir = path.join(uploadsDir, 'videos');
     fs.mkdirSync(dir, { recursive: true });
   }
 });
+
+// فشرده‌سازی تصویر با sharp
+const compressImage = async (filePath) => {
+  try {
+    const ext = path.extname(filePath).toLowerCase();
+    const tempPath = filePath + '.tmp';
+    
+    // فشرده‌سازی با sharp
+    await sharp(filePath)
+      .resize(1080, 1080, { fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 80 })
+      .toFile(tempPath);
+    
+    // جایگزینی فایل اصلی
+    fs.unlinkSync(filePath);
+    fs.renameSync(tempPath, filePath.replace(ext, '.jpg'));
+    
+    console.log('✅ Image compressed:', filePath);
+    return filePath.replace(ext, '.jpg');
+  } catch (e) {
+    console.log('⚠️ Compression failed, using original:', e.message);
+    return filePath;
+  }
+};
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -86,4 +111,4 @@ const uploadMultiple = multer({
   limits: { fileSize: 10 * 1024 * 1024 }
 });
 
-module.exports = { upload, uploadImage, uploadVideo, uploadMultiple };
+module.exports = { upload, uploadImage, uploadVideo, uploadMultiple, compressImage };
