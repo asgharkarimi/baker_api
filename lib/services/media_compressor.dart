@@ -1,10 +1,10 @@
 import 'dart:io';
-import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:video_compress/video_compress.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 
 class MediaCompressor {
+  // فشرده‌سازی سبک با flutter_image_compress
   static Future<File?> compressImage(
     File file, {
     int quality = 70,
@@ -12,26 +12,35 @@ class MediaCompressor {
   }) async {
     try {
       final originalSize = await file.length();
-      debugPrint('Original image: ${_formatBytes(originalSize)}');
-
-      final bytes = await file.readAsBytes();
-      final codec = await ui.instantiateImageCodec(bytes);
-      final frame = await codec.getNextFrame();
-
-      final byteData = await frame.image.toByteData(format: ui.ImageByteFormat.png);
-      if (byteData == null) return file;
+      
+      // اگه کمتر از 500KB بود، فشرده نکن
+      if (originalSize < 500 * 1024) {
+        debugPrint('📷 Image small enough, skipping compression');
+        return file;
+      }
+      
+      debugPrint('📷 Compressing image: ${_formatBytes(originalSize)}');
 
       final dir = await getTemporaryDirectory();
       final targetPath = '${dir.path}/img_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final compressedFile = File(targetPath);
-      await compressedFile.writeAsBytes(byteData.buffer.asUint8List());
+      
+      final result = await FlutterImageCompress.compressAndGetFile(
+        file.absolute.path,
+        targetPath,
+        quality: quality,
+        minWidth: maxDimension,
+        minHeight: maxDimension,
+      );
 
-      final compressedSize = await compressedFile.length();
-      debugPrint('Compressed: ${_formatBytes(compressedSize)}');
-
-      return compressedFile;
+      if (result != null) {
+        final compressedSize = await result.length();
+        debugPrint('📷 Compressed: ${_formatBytes(compressedSize)}');
+        return File(result.path);
+      }
+      
+      return file;
     } catch (e) {
-      debugPrint('Error compressing image: $e');
+      debugPrint('⚠️ Compression failed: $e');
       return file;
     }
   }
@@ -45,62 +54,22 @@ class MediaCompressor {
     return compressed;
   }
 
-
+  // ویدیو فشرده نمیشه - سنگینه
   static Future<File?> compressVideo(
     File file, {
-    VideoQuality quality = VideoQuality.MediumQuality,
+    dynamic quality,
     void Function(double)? onProgress,
   }) async {
-    try {
-      final originalSize = await file.length();
-      debugPrint('Original video: ${_formatBytes(originalSize)}');
-
-      if (onProgress != null) {
-        VideoCompress.compressProgress$.subscribe((progress) {
-          onProgress(progress);
-        });
-      }
-
-      final info = await VideoCompress.compressVideo(
-        file.path,
-        quality: quality,
-        deleteOrigin: false,
-        includeAudio: true,
-      );
-
-      if (info != null && info.file != null) {
-        final compressedSize = await info.file!.length();
-        debugPrint('Compressed video: ${_formatBytes(compressedSize)}');
-        return info.file;
-      }
-
-      return file;
-    } catch (e) {
-      debugPrint('Error compressing video: $e');
-      return file;
-    }
+    return file;
   }
 
   static Future<File?> getVideoThumbnail(File videoFile) async {
-    try {
-      return await VideoCompress.getFileThumbnail(
-        videoFile.path,
-        quality: 70,
-        position: -1,
-      );
-    } catch (e) {
-      debugPrint('Error getting thumbnail: $e');
-      return null;
-    }
+    return null;
   }
 
-  static Future<void> cancelVideoCompression() async {
-    await VideoCompress.cancelCompression();
-  }
+  static Future<void> cancelVideoCompression() async {}
 
-  static Future<void> clearCache() async {
-    await VideoCompress.deleteAllCache();
-  }
+  static Future<void> clearCache() async {}
 
   static String _formatBytes(int bytes) {
     if (bytes < 1024) return '$bytes B';

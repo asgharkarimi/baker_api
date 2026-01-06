@@ -45,6 +45,11 @@ const User = sequelize.define('User', {
     type: DataTypes.DATE,
     field: 'verification_expires'
   },
+  verificationAttempts: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
+    field: 'verification_attempts'
+  },
   lastSeen: {
     type: DataTypes.DATE,
     field: 'last_seen'

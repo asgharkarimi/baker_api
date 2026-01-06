@@ -19,7 +19,7 @@ class ViewProfileScreen extends StatelessWidget {
         body: CustomScrollView(
           slivers: [
             SliverAppBar(
-              expandedHeight: 220,
+              expandedHeight: 200,
               pinned: true,
               backgroundColor: AppTheme.primaryGreen,
               flexibleSpace: FlexibleSpaceBar(
@@ -41,35 +41,35 @@ class ViewProfileScreen extends StatelessWidget {
                         imageUrl: user['profileImage'] != null
                             ? '${ApiService.serverUrl}${user['profileImage']}'
                             : null,
-                        radius: 40,
+                        radius: 35,
                         name: user['name'],
                         backgroundColor: Colors.white,
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
                       Text(
                         user['name'] ?? 'کاربر',
                         style: const TextStyle(
-                          fontSize: 16,
+                          fontSize: 15,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                         ),
                       ),
                       if (user['city'] != null || user['province'] != null)
                         Padding(
-                          padding: const EdgeInsets.only(top: 4),
+                          padding: const EdgeInsets.only(top: 3),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.location_on, color: Colors.white70, size: 12),
+                              const Icon(Icons.location_on, color: Colors.white70, size: 11),
                               const SizedBox(width: 2),
                               Text(
                                 [user['city'], user['province']].where((e) => e != null).join('، '),
-                                style: const TextStyle(color: Colors.white70, fontSize: 11),
+                                style: const TextStyle(color: Colors.white70, fontSize: 10),
                               ),
                             ],
                           ),
                         ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 16),
                     ],
                   ),
                 ),
