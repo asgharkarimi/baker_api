@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'api_service.dart';
+import 'encryption_service.dart';
+import 'socket_service.dart';
 
 /// سرویس پیش‌بارگذاری داده‌ها در پس‌زمینه
 class PreloadService {
@@ -18,13 +20,15 @@ class PreloadService {
     final stopwatch = Stopwatch()..start();
 
     try {
-      // همه درخواست‌ها رو موازی اجرا کن
+      // اول اطلاعات کاربر رو بگیر (برای رمزنگاری و سوکت)
+      await _preloadUserData();
+      
+      // بعد بقیه داده‌ها رو موازی بگیر
       await Future.wait([
         _preloadJobAds(),
         _preloadJobSeekers(),
         _preloadBakeries(),
         _preloadEquipment(),
-        _preloadUserData(),
       ]);
 
       _isPreloaded = true;
@@ -77,13 +81,24 @@ class PreloadService {
     }
   }
 
-  /// پیش‌بارگذاری اطلاعات کاربر
+  /// پیش‌بارگذاری اطلاعات کاربر و اتصال سوکت
   static Future<void> _preloadUserData() async {
     try {
       final isLoggedIn = await ApiService.isLoggedIn();
       if (isLoggedIn) {
-        // گرفتن userId برای رمزنگاری
-        await ApiService.getCurrentUserId();
+        // گرفتن userId
+        final userId = await ApiService.getCurrentUserId();
+        
+        if (userId != null) {
+          // تنظیم برای رمزنگاری
+          EncryptionService.setMyUserId(userId);
+          
+          // اتصال سوکت برای دریافت پیام‌های realtime
+          SocketService.connect(userId);
+          
+          debugPrint('📦 کاربر $userId آماده شد (رمزنگاری + سوکت)');
+        }
+        
         // گرفتن اطلاعات کاربر
         await ApiService.getCurrentUser();
         debugPrint('📦 اطلاعات کاربر بارگذاری شد');

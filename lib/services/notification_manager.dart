@@ -8,26 +8,37 @@ import 'encryption_service.dart';
 class NotificationManager {
   static GlobalKey<NavigatorState>? navigatorKey;
   static String? _currentChatRecipientId;
+  static bool _initialized = false;
 
   /// مقداردهی اولیه
   static void init(GlobalKey<NavigatorState> key) {
+    if (_initialized) return;
+    _initialized = true;
+    
     navigatorKey = key;
     
     // تنظیم callback برای نمایش اعلان
     SocketService.onShowNotification = _handleNewMessage;
+    debugPrint('🔔 NotificationManager initialized');
   }
 
   /// تنظیم recipientId چت فعلی (برای جلوگیری از نمایش اعلان در همون چت)
   static void setCurrentChat(String? recipientId) {
     _currentChatRecipientId = recipientId;
+    debugPrint('🔔 Current chat set to: $recipientId');
   }
 
   /// هندل کردن پیام جدید
   static Future<void> _handleNewMessage(Map<String, dynamic> message) async {
+    debugPrint('🔔 New message received for notification');
+    
     final senderId = message['senderId']?.toString();
     
     // اگه توی همون چت هستیم، اعلان نشون نده
-    if (senderId == _currentChatRecipientId) return;
+    if (senderId == _currentChatRecipientId) {
+      debugPrint('🔔 Skipping notification - same chat');
+      return;
+    }
 
     // رمزگشایی پیام
     String messageText = message['message'] ?? '';
@@ -42,30 +53,63 @@ class NotificationManager {
       }
     }
 
-    // نمایش اعلان (با تاخیر کوتاه برای اطمینان از وجود context)
-    Future.microtask(() {
-      final context = navigatorKey?.currentContext;
-      if (context == null) return;
-      
+    final senderName = message['senderName'] ?? 'کاربر';
+    final senderAvatar = message['senderAvatar'];
+    
+    debugPrint('🔔 Showing notification from: $senderName');
+
+    // نمایش اعلان
+    _showNotification(
+      senderId: senderId ?? '0',
+      senderName: senderName,
+      senderAvatar: senderAvatar,
+      message: messageText,
+    );
+  }
+  
+  /// نمایش نوتیفیکیشن
+  static void _showNotification({
+    required String senderId,
+    required String senderName,
+    required String message,
+    String? senderAvatar,
+  }) {
+    final context = navigatorKey?.currentContext;
+    if (context == null) {
+      debugPrint('🔔 No context available for notification');
+      return;
+    }
+    
+    try {
       InAppNotification.showMessageNotification(
         context: context,
-        senderName: message['senderName'] ?? 'کاربر',
-        message: messageText,
-        senderAvatar: message['senderAvatar'],
+        senderName: senderName,
+        message: message,
+        senderAvatar: senderAvatar,
         onTap: () {
-          // رفتن به صفحه چت
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => ChatScreen(
-                recipientId: senderId ?? '0',
-                recipientName: message['senderName'] ?? 'کاربر',
-                recipientAvatar: message['senderAvatar'] ?? 'ک',
-              ),
-            ),
-          );
+          _goToChat(senderId, senderName, senderAvatar);
         },
       );
-    });
+      debugPrint('🔔 Notification shown successfully');
+    } catch (e) {
+      debugPrint('🔔 Error showing notification: $e');
+    }
+  }
+  
+  /// رفتن به صفحه چت
+  static void _goToChat(String recipientId, String recipientName, String? recipientAvatar) {
+    final context = navigatorKey?.currentContext;
+    if (context == null) return;
+    
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChatScreen(
+          recipientId: recipientId,
+          recipientName: recipientName,
+          recipientAvatar: recipientAvatar ?? recipientName[0],
+        ),
+      ),
+    );
   }
 }

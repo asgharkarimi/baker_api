@@ -126,14 +126,17 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     // اول userId رو بگیر (سریع)
     _myUserId = await ApiService.getCurrentUserId();
     
-    // تنظیم userId برای رمزنگاری
+    // تنظیم userId برای رمزنگاری (اگه قبلاً تنظیم نشده)
     if (_myUserId != null) {
       EncryptionService.setMyUserId(_myUserId!);
     }
     
-    // اتصال به WebSocket (بدون await)
+    // اتصال به WebSocket اگه وصل نیست + تنظیم callbacks
     if (_myUserId != null) {
-      SocketService.connect(_myUserId!);
+      if (!SocketService.isConnected) {
+        SocketService.connect(_myUserId!);
+      }
+      // تنظیم callbacks برای این صفحه
       SocketService.onNewMessage = _onNewMessageReceived;
       SocketService.onUserTyping = _onUserTypingReceived;
       SocketService.onMessageDelivered = _onMessageDelivered;

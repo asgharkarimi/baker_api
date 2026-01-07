@@ -43,16 +43,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     UnreadMessagesService().loadUnreadCount();
     UnreadMessagesService().addListener(_onUnreadCountChanged);
     
-    // اتصال به WebSocket برای دریافت پیام‌های جدید
-    _connectSocket();
+    // سوکت در PreloadService وصل شده، اینجا فقط چک کن
+    _ensureSocketConnected();
   }
 
-  Future<void> _connectSocket() async {
-    final userId = await ApiService.getCurrentUserId();
-    if (userId != null) {
-      EncryptionService.setMyUserId(userId);
-      SocketService.connect(userId);
-      debugPrint('🔌 Socket connected for user: $userId');
+  Future<void> _ensureSocketConnected() async {
+    // اگه سوکت وصل نیست، وصلش کن
+    if (!SocketService.isConnected) {
+      final userId = await ApiService.getCurrentUserId();
+      if (userId != null) {
+        EncryptionService.setMyUserId(userId);
+        SocketService.connect(userId);
+        debugPrint('🔌 Socket connected in HomeScreen for user: $userId');
+      }
     }
   }
 
