@@ -910,14 +910,14 @@ class ApiService {
   static Future<bool> sendMessage(int receiverId, String message, {int? replyToId, bool encrypt = true}) async {
     await _loadToken();
     try {
-      // رمزنگاری پیام قبل از ارسال
       String finalMessage = message;
       bool isEncrypted = false;
       
-      if (encrypt) {
+      if (encrypt && EncryptionService.myUserId != null) {
         try {
           finalMessage = await EncryptionService.encryptMessage(message, receiverId);
           isEncrypted = true;
+          debugPrint('🔐 Message encrypted successfully');
         } catch (e) {
           debugPrint('⚠️ Encryption failed, sending plain: $e');
         }

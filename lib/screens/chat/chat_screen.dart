@@ -159,9 +159,22 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     });
   }
   
-  void _onNewMessageReceived(Map<String, dynamic> message) {
+  void _onNewMessageReceived(Map<String, dynamic> message) async {
     final senderId = message['senderId']?.toString();
     if (senderId == widget.recipientId && mounted) {
+      // رمزگشایی پیام اگه رمزنگاری شده
+      if (message['isEncrypted'] == true && message['message'] != null) {
+        try {
+          final decrypted = await EncryptionService.decryptMessage(
+            message['message'].toString(),
+            int.parse(senderId!),
+          );
+          message['message'] = decrypted;
+        } catch (e) {
+          debugPrint('❌ Realtime decrypt error: $e');
+        }
+      }
+      
       setState(() {
         _messages.add(message);
       });
@@ -1375,7 +1388,7 @@ class _VoiceMessagePlayerState extends State<_VoiceMessagePlayer> {
                     thumbColor: color,
                   ),
                   child: Slider(
-                    value: _position.inMilliseconds.toDouble(),
+                    value: _position.inMilliseconds.toDouble().clamp(0, _duration.inMilliseconds.toDouble().clamp(1, double.infinity)),
                     max: _duration.inMilliseconds.toDouble().clamp(1, double.infinity),
                     onChanged: (value) {
                       _player.seek(Duration(milliseconds: value.toInt()));
@@ -1775,7 +1788,7 @@ class _CachedVoicePlayerState extends State<_CachedVoicePlayer> {
                     thumbColor: color,
                   ),
                   child: Slider(
-                    value: _position.inMilliseconds.toDouble(),
+                    value: _position.inMilliseconds.toDouble().clamp(0, _duration.inMilliseconds.toDouble().clamp(1, double.infinity)),
                     max: _duration.inMilliseconds.toDouble().clamp(1, double.infinity),
                     onChanged: (value) {
                       _player.seek(Duration(milliseconds: value.toInt()));

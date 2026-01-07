@@ -1,137 +1,65 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-/// سرویس رمزنگاری برای چت
+/// سرویس رمزنگاری ساده و قابل اعتماد برای چت
+/// کلید بر اساس دو userId ساخته میشه و برای هر دو طرف یکسانه
 class EncryptionService {
-  static const String _keyStoragePrefix = 'chat_key_v2_';
   static int? _myUserId;
-  
-  // کش کلیدها در حافظه برای سرعت بیشتر
-  static final Map<int, String> _keyCache = {};
 
-  /// تنظیم userId کاربر فعلی
+  /// تنظیم userId کاربر فعلی - باید قبل از استفاده فراخوانی بشه
   static void setMyUserId(int userId) {
     _myUserId = userId;
-    debugPrint('🔐 EncryptionService: userId set to $userId');
+    debugPrint('🔐 EncryptionService: myUserId = $userId');
   }
 
-  /// تولید کلید یکتا برای مکالمه (بر اساس هر دو userId)
-  static String _generateChatKeyName(int recipientId) {
+  /// گرفتن userId فعلی
+  static int? get myUserId => _myUserId;
+
+  /// تولید کلید یکتا برای مکالمه
+  /// کلید همیشه یکسانه چون بر اساس min_max ساخته میشه
+  static String _generateKey(int recipientId) {
     if (_myUserId == null) {
-      debugPrint('⚠️ Warning: _myUserId is null!');
-      return '${_keyStoragePrefix}temp_$recipientId';
+      throw Exception('userId not set! Call setMyUserId first.');
     }
     
-    // کلید یکسان برای هر دو طرف: min_max
-    final minId = _myUserId! < recipientId ? _myUserId! : recipientId;
-    final maxId = _myUserId! > recipientId ? _myUserId! : recipientId;
-    return '$_keyStoragePrefix${minId}_$maxId';
-  }
-
-  /// تولید کلید قطعی بر اساس دو userId (همیشه یکسان برای هر دو طرف)
-  static String _generateDeterministicKey(int id1, int id2) {
-    // مرتب‌سازی برای اطمینان از یکسان بودن کلید
+    final id1 = _myUserId!;
+    final id2 = recipientId;
+    
+    // همیشه به ترتیب min_max تا هر دو طرف کلید یکسان داشته باشن
     final minId = id1 < id2 ? id1 : id2;
     final maxId = id1 > id2 ? id1 : id2;
     
-    final seed = 'bakery_chat_secure_${minId}_${maxId}_2024';
-    final bytes = utf8.encode(seed);
-    
-    final key = List<int>.generate(32, (i) {
-      return (bytes[i % bytes.length] + i * 7 + minId + maxId) % 256;
-    });
-    
-    return base64Encode(key);
+    // کلید ثابت و قابل پیش‌بینی
+    final seed = 'bakery_secure_chat_${minId}_${maxId}_key_2024';
+    debugPrint('🔐 Key generated: myId=$id1, recipientId=$id2, minId=$minId, maxId=$maxId');
+    return seed;
   }
 
-  /// تولید کلید مشترک برای هر مکالمه - با کش
-  static Future<String> _getOrCreateChatKey(int recipientId) async {
-    if (_myUserId == null) {
-      debugPrint('❌ Error: _myUserId is null, cannot create proper key');
-      throw Exception('userId not set');
-    }
-    
-    // اول از کش بخون
-    if (_keyCache.containsKey(recipientId)) {
-      return _keyCache[recipientId]!;
-    }
-    
-    final prefs = await SharedPreferences.getInstance();
-    final keyName = _generateChatKeyName(recipientId);
-
-    String? key = prefs.getString(keyName);
-    if (key == null) {
-      // کلید جدید بساز
-      key = _generateDeterministicKey(_myUserId!, recipientId);
-      await prefs.setString(keyName, key);
-      debugPrint('🔐 New chat key created for conversation with $recipientId');
-    }
-    
-    // کش کن
-    _keyCache[recipientId] = key;
-    return key;
-  }
-  
-  /// گرفتن کلید از کش (sync) - برای استفاده در Isolate
-  static String? getCachedKey(int recipientId) {
-    return _keyCache[recipientId];
-  }
-  
-  /// پیش‌بارگذاری کلید برای یک مکالمه
-  static Future<void> preloadKey(int recipientId) async {
-    if (_myUserId != null) {
-      await _getOrCreateChatKey(recipientId);
-    }
-  }
-
-  /// رمزنگاری پیام با XOR + Base64
+  /// رمزنگاری پیام
   static Future<String> encryptMessage(String message, int recipientId) async {
     try {
-      if (_myUserId == null) {
-        debugPrint('⚠️ Encryption skipped: userId not set');
-        return message;
-      }
-      final key = await _getOrCreateChatKey(recipientId);
-      return _encryptWithKey(message, key);
+      final key = _generateKey(recipientId);
+      final keyBytes = utf8.encode(key);
+      final messageBytes = utf8.encode(message);
+
+      final encrypted = List<int>.generate(
+        messageBytes.length,
+        (i) => messageBytes[i] ^ keyBytes[i % keyBytes.length],
+      );
+
+      return base64Encode(encrypted);
     } catch (e) {
       debugPrint('❌ Encryption error: $e');
-      return message; // برگردون پیام اصلی اگه خطا داد
+      return message; // اگه خطا داد، پیام اصلی رو برگردون
     }
-  }
-  
-  /// رمزنگاری sync با کلید آماده
-  static String _encryptWithKey(String message, String key) {
-    final keyBytes = utf8.encode(key);
-    final messageBytes = utf8.encode(message);
-
-    final encrypted = List<int>.generate(
-      messageBytes.length,
-      (i) => messageBytes[i] ^ keyBytes[i % keyBytes.length],
-    );
-
-    return base64Encode(encrypted);
   }
 
   /// رمزگشایی پیام
   static Future<String> decryptMessage(String encryptedMessage, int recipientId) async {
     try {
       if (encryptedMessage.isEmpty) return encryptedMessage;
-      if (_myUserId == null) {
-        debugPrint('⚠️ Decryption skipped: userId not set');
-        return encryptedMessage;
-      }
-      final key = await _getOrCreateChatKey(recipientId);
-      return _decryptWithKey(encryptedMessage, key);
-    } catch (e) {
-      debugPrint('❌ Decryption error: $e');
-      return encryptedMessage;
-    }
-  }
-  
-  /// رمزگشایی sync با کلید آماده
-  static String _decryptWithKey(String encryptedMessage, String key) {
-    try {
+      
+      final key = _generateKey(recipientId);
       final keyBytes = utf8.encode(key);
       final encryptedBytes = base64Decode(encryptedMessage);
 
@@ -142,54 +70,43 @@ class EncryptionService {
 
       return utf8.decode(decrypted);
     } catch (e) {
-      return encryptedMessage;
+      debugPrint('❌ Decryption error: $e');
+      return encryptedMessage; // اگه خطا داد، همون متن رو برگردون
     }
   }
-  
-  /// رمزگشایی لیست پیام‌ها در Isolate
+
+  /// رمزگشایی لیست پیام‌ها (برای performance بهتر)
   static Future<List<Map<String, dynamic>>> decryptMessagesInBackground(
     List<Map<String, dynamic>> messages,
     int recipientId,
   ) async {
     if (_myUserId == null) {
-      debugPrint('⚠️ Batch decryption skipped: userId not set');
+      debugPrint('⚠️ Cannot decrypt: userId not set');
       return messages;
     }
-    
-    // اول کلید رو آماده کن
-    final key = await _getOrCreateChatKey(recipientId);
-    
-    // رمزگشایی در Isolate
-    return compute(_decryptMessagesIsolate, _DecryptParams(messages, key));
-  }
 
-  /// پاک کردن همه کلیدها
-  static Future<void> clearAllKeys() async {
-    final prefs = await SharedPreferences.getInstance();
-    final keys = prefs.getKeys().where((k) => k.startsWith('chat_key_'));
-    for (final key in keys) {
-      await prefs.remove(key);
-    }
-    _keyCache.clear();
-    debugPrint('🔐 All chat keys cleared');
+    final key = _generateKey(recipientId);
+    
+    // رمزگشایی در Isolate برای جلوگیری از بلاک شدن UI
+    return compute(_decryptMessages, _DecryptParams(messages, key));
   }
 }
 
-/// پارامترهای رمزگشایی برای Isolate
+/// پارامترهای رمزگشایی
 class _DecryptParams {
   final List<Map<String, dynamic>> messages;
   final String key;
-  
   _DecryptParams(this.messages, this.key);
 }
 
 /// تابع رمزگشایی در Isolate
-List<Map<String, dynamic>> _decryptMessagesIsolate(_DecryptParams params) {
+List<Map<String, dynamic>> _decryptMessages(_DecryptParams params) {
+  final keyBytes = utf8.encode(params.key);
+  
   for (var msg in params.messages) {
     if (msg['message'] != null && msg['isEncrypted'] == true) {
       try {
         final encryptedMessage = msg['message'] as String;
-        final keyBytes = utf8.encode(params.key);
         final encryptedBytes = base64Decode(encryptedMessage);
 
         final decrypted = List<int>.generate(
