@@ -25,7 +25,12 @@ class AddMenuFab extends StatelessWidget {
               children: [
                 Icon(Icons.login, color: AppTheme.primaryGreen),
                 const SizedBox(width: 8),
-                const Text('ورود به حساب کاربری'),
+                const Expanded(
+                  child: Text(
+                    'ورود به حساب کاربری',
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ],
             ),
             content: const Text('برای ثبت آگهی باید وارد حساب کاربری خود شوید.'),

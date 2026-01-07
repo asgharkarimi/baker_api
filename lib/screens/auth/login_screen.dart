@@ -302,8 +302,12 @@ class _LoginScreenState extends State<LoginScreen> {
                   letterSpacing: 1.5,
                 ),
                 decoration: InputDecoration(
-                  hintText: '0912 345 6789',
-                  hintStyle: TextStyle(color: Colors.grey.shade400),
+                  hintText: '09123456789',
+                  hintTextDirection: TextDirection.ltr,
+                  hintStyle: TextStyle(
+                    color: Colors.grey.shade400,
+                    letterSpacing: 1.5,
+                  ),
                   prefixIcon: Icon(Icons.phone_android, color: Colors.grey.shade600),
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),

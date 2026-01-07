@@ -13,6 +13,7 @@ import '../../services/api_service.dart';
 import '../../services/socket_service.dart';
 import '../../services/notification_manager.dart';
 import '../../services/media_cache_service.dart';
+import '../../services/encryption_service.dart';
 import '../../widgets/cached_media.dart';
 import '../profile/view_profile_screen.dart';
 
@@ -124,6 +125,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   Future<void> _init() async {
     // اول userId رو بگیر (سریع)
     _myUserId = await ApiService.getCurrentUserId();
+    
+    // تنظیم userId برای رمزنگاری
+    if (_myUserId != null) {
+      EncryptionService.setMyUserId(_myUserId!);
+    }
     
     // اتصال به WebSocket (بدون await)
     if (_myUserId != null) {
@@ -505,7 +511,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       }
       
       final dir = await getTemporaryDirectory();
-      final path = p.join(dir.path, 'voice_${DateTime.now().millisecondsSinceEpoch}.aac');
+      final path = p.join(dir.path, 'voice_${DateTime.now().millisecondsSinceEpoch}.m4a');
       
       debugPrint('🎤 Starting recording at: $path');
       await _recorderController.record(path: path);

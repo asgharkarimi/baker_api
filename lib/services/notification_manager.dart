@@ -24,9 +24,6 @@ class NotificationManager {
 
   /// هندل کردن پیام جدید
   static Future<void> _handleNewMessage(Map<String, dynamic> message) async {
-    final context = navigatorKey?.currentContext;
-    if (context == null) return;
-
     final senderId = message['senderId']?.toString();
     
     // اگه توی همون چت هستیم، اعلان نشون نده
@@ -45,25 +42,30 @@ class NotificationManager {
       }
     }
 
-    // نمایش اعلان
-    InAppNotification.showMessageNotification(
-      context: context,
-      senderName: message['senderName'] ?? 'کاربر',
-      message: messageText,
-      senderAvatar: message['senderAvatar'],
-      onTap: () {
-        // رفتن به صفحه چت
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ChatScreen(
-              recipientId: senderId ?? '0',
-              recipientName: message['senderName'] ?? 'کاربر',
-              recipientAvatar: message['senderAvatar'] ?? 'ک',
+    // نمایش اعلان (با تاخیر کوتاه برای اطمینان از وجود context)
+    Future.microtask(() {
+      final context = navigatorKey?.currentContext;
+      if (context == null) return;
+      
+      InAppNotification.showMessageNotification(
+        context: context,
+        senderName: message['senderName'] ?? 'کاربر',
+        message: messageText,
+        senderAvatar: message['senderAvatar'],
+        onTap: () {
+          // رفتن به صفحه چت
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ChatScreen(
+                recipientId: senderId ?? '0',
+                recipientName: message['senderName'] ?? 'کاربر',
+                recipientAvatar: message['senderAvatar'] ?? 'ک',
+              ),
             ),
-          ),
-        );
-      },
-    );
+          );
+        },
+      );
+    });
   }
 }

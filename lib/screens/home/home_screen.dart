@@ -1,6 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../services/unread_messages_service.dart';
+import '../../services/socket_service.dart';
+import '../../services/api_service.dart';
+import '../../services/encryption_service.dart';
 import '../job_ads/job_ads_list_screen.dart';
 import '../job_seekers/job_seekers_list_screen.dart';
 import '../marketplace/marketplace_screen.dart';
@@ -38,6 +42,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     // بارگذاری تعداد پیام‌های خوانده نشده
     UnreadMessagesService().loadUnreadCount();
     UnreadMessagesService().addListener(_onUnreadCountChanged);
+    
+    // اتصال به WebSocket برای دریافت پیام‌های جدید
+    _connectSocket();
+  }
+
+  Future<void> _connectSocket() async {
+    final userId = await ApiService.getCurrentUserId();
+    if (userId != null) {
+      EncryptionService.setMyUserId(userId);
+      SocketService.connect(userId);
+      debugPrint('🔌 Socket connected for user: $userId');
+    }
   }
 
   void _onUnreadCountChanged() {

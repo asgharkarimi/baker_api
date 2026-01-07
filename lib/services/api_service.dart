@@ -13,7 +13,7 @@ import 'cache_service.dart';
 import 'encryption_service.dart';
 
 class ApiService {
-  // آدرس سرور اصلی
+  // آدرس سرور آنلاین
   static const String baseUrl = 'https://bakerjobs.ir/api';
   static const String serverUrl = 'https://bakerjobs.ir';
   static const Duration _timeout = Duration(seconds: 5);

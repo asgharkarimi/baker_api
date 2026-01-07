@@ -102,15 +102,31 @@ io.on('connection', (socket) => {
   });
 
   // ارسال پیام
-  socket.on('sendMessage', (data) => {
+  socket.on('sendMessage', async (data) => {
     const { receiverId, message, senderId, messageType, mediaUrl, isEncrypted } = data;
     const receiverSocket = onlineUsers.get(receiverId);
     
     console.log(`📨 Message from ${senderId} to ${receiverId}`);
     
     if (receiverSocket) {
+      // گرفتن اطلاعات فرستنده
+      let senderName = 'کاربر';
+      let senderAvatar = null;
+      try {
+        const { User } = require('./models');
+        const sender = await User.findByPk(senderId, { attributes: ['name', 'profileImage'] });
+        if (sender) {
+          senderName = sender.name || 'کاربر';
+          senderAvatar = sender.profileImage;
+        }
+      } catch (e) {
+        console.log('⚠️ Could not get sender info:', e.message);
+      }
+      
       io.to(receiverSocket).emit('newMessage', {
         senderId,
+        senderName,
+        senderAvatar,
         message,
         messageType: messageType || 'text',
         mediaUrl,
