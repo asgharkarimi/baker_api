@@ -72,7 +72,21 @@ router.post('/verify', async (req, res) => {
 
     // چک کردن تعداد تلاش‌های ناموفق
     if (user.verificationAttempts >= 5) {
-      return res.status(429).json({ success: false, message: 'تعداد تلاش‌ها بیش از حد مجاز است. لطفاً بعداً تلاش کنید.' });
+      // چک کردن زمان آخرین تلاش - اگه 2 دقیقه گذشته باشه ریست کن
+      const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
+      if (user.updatedAt && new Date(user.updatedAt) < twoMinutesAgo) {
+        // 2 دقیقه گذشته، ریست تعداد تلاش‌ها
+        user.verificationAttempts = 0;
+        await user.save();
+      } else {
+        // هنوز 2 دقیقه نگذشته
+        const remainingSeconds = Math.ceil((new Date(user.updatedAt).getTime() + 2 * 60 * 1000 - Date.now()) / 1000);
+        return res.status(429).json({ 
+          success: false, 
+          message: `تعداد تلاش‌ها بیش از حد مجاز است. ${remainingSeconds} ثانیه صبر کنید.`,
+          remainingSeconds 
+        });
+      }
     }
 
     // چک کردن انقضای کد
