@@ -11,6 +11,10 @@ const helmet = require('helmet');
 dotenv.config();
 
 const app = express();
+
+// Trust proxy for rate limiting behind reverse proxy (cPanel/Passenger)
+app.set('trust proxy', 1);
+
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: { 
