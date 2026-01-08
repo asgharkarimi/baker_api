@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 
 class MediaPickerService {
@@ -20,17 +21,17 @@ class MediaPickerService {
       );
       
       if (image != null) {
-        print('Image picked: ${image.path}');
+        debugPrint('Image picked: ${image.path}');
         return File(image.path);
       }
-      print('No image selected');
+      debugPrint('No image selected');
       return null;
     } catch (e) {
-      print('Error picking image: $e');
+      debugPrint('Error picking image: $e');
       // بررسی نوع خطا
       if (e.toString().contains('photo_access_denied') || 
           e.toString().contains('camera_access_denied')) {
-        print('Permission denied');
+        debugPrint('Permission denied');
       }
       return null;
     }
@@ -49,12 +50,12 @@ class MediaPickerService {
         imageQuality: imageQuality,
       );
       
-      print('${images.length} images picked');
+      debugPrint('${images.length} images picked');
       return images.map((xFile) => File(xFile.path)).toList();
     } catch (e) {
-      print('Error picking multiple images: $e');
+      debugPrint('Error picking multiple images: $e');
       if (e.toString().contains('photo_access_denied')) {
-        print('Gallery permission denied');
+        debugPrint('Gallery permission denied');
       }
       return [];
     }
@@ -76,7 +77,7 @@ class MediaPickerService {
       }
       return null;
     } catch (e) {
-      print('Error picking video: $e');
+      debugPrint('Error picking video: $e');
       return null;
     }
   }

@@ -1,15 +1,19 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/review.dart';
 
 class ReviewService {
   static const String baseUrl = 'https://bakerjobs.ir/api';
+  
+  static const _secureStorage = FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
+  );
 
   static Future<Map<String, String>> _getHeaders() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('auth_token');
+    final token = await _secureStorage.read(key: 'auth_token');
     return {
       'Content-Type': 'application/json',
       if (token != null) 'Authorization': 'Bearer $token',

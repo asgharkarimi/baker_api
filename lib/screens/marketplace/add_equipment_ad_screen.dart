@@ -263,7 +263,7 @@ class _AddEquipmentAdScreenState extends State<AddEquipmentAdScreen> {
               Container(
                 padding: EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  border: Border.all(color: AppTheme.textGrey.withOpacity(0.3)),
+                  border: Border.all(color: AppTheme.textGrey.withValues(alpha: 0.3)),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Column(
@@ -330,7 +330,7 @@ class _AddEquipmentAdScreenState extends State<AddEquipmentAdScreen> {
                             },
                             child: Container(
                               decoration: BoxDecoration(
-                                color: AppTheme.primaryGreen.withOpacity(0.1),
+                                color: AppTheme.primaryGreen.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
                                   color: AppTheme.primaryGreen,
@@ -385,7 +385,7 @@ class _AddEquipmentAdScreenState extends State<AddEquipmentAdScreen> {
                                   child: Container(
                                     padding: EdgeInsets.all(4),
                                     decoration: BoxDecoration(
-                                      color: Colors.red.withOpacity(0.8),
+                                      color: Colors.red.withValues(alpha: 0.8),
                                       shape: BoxShape.circle,
                                     ),
                                     child: Icon(

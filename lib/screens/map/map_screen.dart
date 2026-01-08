@@ -15,10 +15,11 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> {
-  final MapController _mapController = MapController();
+  MapController? _mapController;
   
   late LatLng _center;
   bool _showSingleLocation = false;
+  bool _isMapReady = false;
 
   @override
   void initState() {
@@ -29,6 +30,18 @@ class _MapScreenState extends State<MapScreen> {
     } else {
       _center = LatLng(35.6892, 51.3890);
     }
+    
+    // تاخیر بیشتر برای جلوگیری از هنگ کردن UI
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) {
+          setState(() {
+            _mapController = MapController();
+            _isMapReady = true;
+          });
+        }
+      });
+    });
   }
   
   // نمونه مکان‌های نانوایی‌ها
@@ -61,13 +74,27 @@ class _MapScreenState extends State<MapScreen> {
             IconButton(
               icon: Icon(Icons.my_location),
               onPressed: () {
-                _mapController.move(_center, 15.0);
+                _mapController?.move(_center, 15.0);
               },
             ),
           ],
         ),
-        body: FlutterMap(
-          mapController: _mapController,
+        body: !_isMapReady
+            ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(color: AppTheme.primaryGreen),
+                    const SizedBox(height: 16),
+                    Text(
+                      'در حال بارگذاری نقشه...',
+                      style: TextStyle(color: AppTheme.textGrey),
+                    ),
+                  ],
+                ),
+              )
+            : FlutterMap(
+          mapController: _mapController!,
           options: MapOptions(
             initialCenter: _center,
             initialZoom: _showSingleLocation ? 15.0 : 13.0,
@@ -79,6 +106,9 @@ class _MapScreenState extends State<MapScreen> {
               urlTemplate: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
               subdomains: const ['a', 'b', 'c', 'd'],
               userAgentPackageName: 'com.example.my_bakers_jobapp',
+              errorTileCallback: (tile, error, stackTrace) {
+                // در صورت خطا در لود تایل، بی‌صدا رد شو
+              },
             ),
             if (_showSingleLocation)
               MarkerLayer(
@@ -169,8 +199,8 @@ class _MapScreenState extends State<MapScreen> {
                 padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: bakery.type == 'فروش'
-                      ? Colors.red.withOpacity(0.1)
-                      : Colors.blue.withOpacity(0.1),
+                      ? Colors.red.withValues(alpha: 0.1)
+                      : Colors.blue.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(

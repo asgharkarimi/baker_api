@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/job_ad.dart';
 import '../models/job_seeker.dart';
 import '../models/bakery_ad.dart';
@@ -11,37 +12,76 @@ import '../models/equipment_ad.dart';
 import 'media_compressor.dart';
 import 'cache_service.dart';
 import 'encryption_service.dart';
+import 'background_processor.dart';
 
 class ApiService {
   // آدرس سرور آنلاین
   static const String baseUrl = 'https://bakerjobs.ir/api';
   static const String serverUrl = 'https://bakerjobs.ir';
-  static const Duration _timeout = Duration(seconds: 5);
+  static const Duration _timeout = Duration(seconds: 15);
+  
+  // فعال/غیرفعال کردن لاگ زمان‌بندی
+  static bool enableTimingLogs = true;
   
   static String? _token;
   static int? _currentUserId;
   
+  // Secure storage برای ذخیره امن توکن
+  static const _secureStorage = FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
+  );
+  
   // Callback برای نمایش پیام آفلاین
   static Function(String)? onServerUnavailable;
+
+  /// لاگ زمان‌بندی برای debug
+  static void _logTiming(String operation, int ms) {
+    if (!enableTimingLogs) return;
+    final emoji = ms < 500 ? '🟢' : ms < 1500 ? '🟡' : '🔴';
+    debugPrint('$emoji [$operation] ${ms}ms');
+  }
+
+  /// تبدیل خطای فنی به پیام کاربرپسند فارسی
+  static String _getUserFriendlyError(dynamic error) {
+    final errorStr = error.toString().toLowerCase();
+    
+    if (errorStr.contains('timeout') || errorStr.contains('timed out')) {
+      return 'سرور پاسخ نمی‌دهد. لطفاً دوباره تلاش کنید';
+    }
+    if (errorStr.contains('socket') || errorStr.contains('connection refused')) {
+      return 'خطا در اتصال به سرور';
+    }
+    if (errorStr.contains('network') || errorStr.contains('unreachable')) {
+      return 'اینترنت در دسترس نیست';
+    }
+    if (errorStr.contains('handshake') || errorStr.contains('certificate')) {
+      return 'خطا در برقراری ارتباط امن';
+    }
+    if (errorStr.contains('host') || errorStr.contains('dns')) {
+      return 'سرور یافت نشد';
+    }
+    
+    return 'خطا در ارتباط با سرور';
+  }
 
   // ==================== Auth ====================
   
   static Future<void> _loadToken() async {
     if (_token != null) return;
-    final prefs = await SharedPreferences.getInstance();
-    _token = prefs.getString('auth_token');
+    _token = await _secureStorage.read(key: 'auth_token');
   }
 
   static Future<void> _saveToken(String token) async {
     _token = token;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('auth_token', token);
+    await _secureStorage.write(key: 'auth_token', value: token);
   }
 
   static Future<void> logout() async {
     _token = null;
+    await _secureStorage.delete(key: 'auth_token');
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('auth_token');
+    await prefs.remove('user_id');
   }
 
   static Future<bool> isLoggedIn() async {
@@ -67,7 +107,7 @@ class ApiService {
       return jsonDecode(response.body);
     } catch (e) {
       debugPrint('❌ Error: $e');
-      return {'success': false, 'message': 'خطا در اتصال به سرور: $e'};
+      return {'success': false, 'message': _getUserFriendlyError(e)};
     }
   }
 
@@ -78,7 +118,7 @@ class ApiService {
         Uri.parse('$baseUrl/auth/verify'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'phone': phone, 'code': code}),
-      );
+      ).timeout(_timeout);
       final data = jsonDecode(response.body);
       if (data['success'] == true && data['token'] != null) {
         await _saveToken(data['token']);
@@ -93,7 +133,7 @@ class ApiService {
       }
       return data;
     } catch (e) {
-      return {'success': false, 'message': 'خطا در اتصال به سرور'};
+      return {'success': false, 'message': _getUserFriendlyError(e)};
     }
   }
   
@@ -182,6 +222,8 @@ class ApiService {
     int page = 1,
     bool useCache = true,
   }) async {
+    final stopwatch = Stopwatch()..start();
+    
     // اگه صفحه اول و بدون فیلتر بود، از کش استفاده کن
     final canUseCache = useCache && page == 1 && category == null && location == null && search == null;
     
@@ -197,15 +239,20 @@ class ApiService {
       
       final uri = Uri.parse('$baseUrl/job-ads').replace(queryParameters: params);
       final response = await http.get(uri).timeout(_timeout);
-      final data = jsonDecode(response.body);
+      _logTiming('سرور job-ads', stopwatch.elapsedMilliseconds);
+      
+      // پارس JSON در background برای جلوگیری از هنگ UI
+      final data = await BackgroundProcessor.parseJson(response.body);
+      _logTiming('پارس job-ads', stopwatch.elapsedMilliseconds);
       
       if (data['success'] == true) {
         final list = data['data'] as List;
-        // کش کردن نتایج
+        // کش کردن نتایج (بدون await برای سرعت بیشتر)
         if (canUseCache) {
-          await CacheService.cacheJobAds(List<Map<String, dynamic>>.from(list));
+          CacheService.cacheJobAds(List<Map<String, dynamic>>.from(list));
         }
-        return list.map((json) => JobAd.fromJson(json)).toList();
+        // تبدیل به مدل در background
+        return await compute(_parseJobAds, list);
       }
       return [];
     } catch (e) {
@@ -215,13 +262,17 @@ class ApiService {
         final cached = await CacheService.getJobAds();
         if (cached != null) {
           debugPrint('📦 Using cached job ads');
-          onServerUnavailable?.call('سرور در دسترس نیست - نمایش از حافظه');
-          return cached.map((json) => JobAd.fromJson(json)).toList();
+          onServerUnavailable?.call('نمایش از حافظه موقت');
+          return await compute(_parseJobAds, cached);
         }
       }
-      onServerUnavailable?.call('سرور در دسترس نیست');
+      onServerUnavailable?.call(_getUserFriendlyError(e));
       return [];
     }
+  }
+
+  static List<JobAd> _parseJobAds(List<dynamic> list) {
+    return list.map((json) => JobAd.fromJson(json)).toList();
   }
 
   static Future<JobAd?> getJobAdById(String id) async {
@@ -241,18 +292,18 @@ class ApiService {
   static Future<bool> createJobAd(Map<String, dynamic> adData) async {
     await _loadToken();
     try {
-      print('📝 ارسال آگهی: $adData');
-      print('🔑 توکن: $_token');
+      debugPrint('📝 ارسال آگهی: $adData');
+      debugPrint('🔑 توکن: $_token');
       final response = await http.post(
         Uri.parse('$baseUrl/job-ads'),
         headers: _headers,
         body: jsonEncode(adData),
       );
-      print('📥 پاسخ: ${response.body}');
+      debugPrint('📥 پاسخ: ${response.body}');
       final data = jsonDecode(response.body);
       return data['success'] == true;
     } catch (e) {
-      print('❌ خطا در ارسال آگهی: $e');
+      debugPrint('❌ خطا در ارسال آگهی: $e');
       return false;
     }
   }
@@ -312,14 +363,14 @@ class ApiService {
       
       final uri = Uri.parse('$baseUrl/job-seekers').replace(queryParameters: params);
       final response = await http.get(uri).timeout(_timeout);
-      final data = jsonDecode(response.body);
+      final data = await BackgroundProcessor.parseJson(response.body);
       
       if (data['success'] == true) {
         final list = data['data'] as List;
         if (canUseCache) {
-          await CacheService.cacheJobSeekers(List<Map<String, dynamic>>.from(list));
+          CacheService.cacheJobSeekers(List<Map<String, dynamic>>.from(list));
         }
-        return list.map((json) => JobSeeker.fromJson(json)).toList();
+        return await compute(_parseJobSeekers, list);
       }
       return [];
     } catch (e) {
@@ -327,13 +378,17 @@ class ApiService {
         final cached = await CacheService.getJobSeekers();
         if (cached != null) {
           debugPrint('📦 Using cached job seekers');
-          onServerUnavailable?.call('سرور در دسترس نیست - نمایش از حافظه');
-          return cached.map((json) => JobSeeker.fromJson(json)).toList();
+          onServerUnavailable?.call('نمایش از حافظه موقت');
+          return await compute(_parseJobSeekers, cached);
         }
       }
-      onServerUnavailable?.call('سرور در دسترس نیست');
+      onServerUnavailable?.call(_getUserFriendlyError(e));
       return [];
     }
+  }
+
+  static List<JobSeeker> _parseJobSeekers(List<dynamic> list) {
+    return list.map((json) => JobSeeker.fromJson(json)).toList();
   }
 
   static Future<JobSeeker?> getJobSeekerById(String id) async {
@@ -413,7 +468,19 @@ class ApiService {
     int page = 1,
     bool useCache = true,
   }) async {
-    final canUseCache = useCache && page == 1 && type == null && location == null && search == null;
+    final stopwatch = Stopwatch()..start();
+    final canUseCache = useCache && page == 1 && type == null && location == null && search == null && province == null;
+    
+    // اول از کش بخون (سریع)
+    if (canUseCache) {
+      final cached = await CacheService.getBakeries();
+      if (cached != null && cached.isNotEmpty) {
+        _logTiming('کش bakery-ads', stopwatch.elapsedMilliseconds);
+        // در background از سرور آپدیت کن
+        _refreshBakeriesInBackground();
+        return await compute(_parseBakeryAds, cached);
+      }
+    }
     
     try {
       final params = <String, String>{
@@ -429,15 +496,18 @@ class ApiService {
       };
       
       final uri = Uri.parse('$baseUrl/bakery-ads').replace(queryParameters: params);
-      final response = await http.get(uri);
-      final data = jsonDecode(response.body);
+      final response = await http.get(uri).timeout(_timeout);
+      _logTiming('سرور bakery-ads', stopwatch.elapsedMilliseconds);
+      
+      final data = await BackgroundProcessor.parseJson(response.body);
+      _logTiming('پارس bakery-ads', stopwatch.elapsedMilliseconds);
       
       if (data['success'] == true) {
         final list = data['data'] as List;
         if (canUseCache) {
-          await CacheService.cacheBakeries(List<Map<String, dynamic>>.from(list));
+          CacheService.cacheBakeries(List<Map<String, dynamic>>.from(list));
         }
-        return list.map((json) => BakeryAd.fromJson(json)).toList();
+        return await compute(_parseBakeryAds, list);
       }
       return [];
     } catch (e) {
@@ -446,11 +516,29 @@ class ApiService {
         final cached = await CacheService.getBakeries();
         if (cached != null) {
           debugPrint('📦 Using cached bakeries');
-          return cached.map((json) => BakeryAd.fromJson(json)).toList();
+          onServerUnavailable?.call('نمایش از حافظه موقت');
+          return await compute(_parseBakeryAds, cached);
         }
       }
+      onServerUnavailable?.call(_getUserFriendlyError(e));
       return [];
     }
+  }
+
+  /// آپدیت نانوایی‌ها در background
+  static Future<void> _refreshBakeriesInBackground() async {
+    try {
+      final uri = Uri.parse('$baseUrl/bakery-ads?page=1');
+      final response = await http.get(uri).timeout(_timeout);
+      final data = await BackgroundProcessor.parseJson(response.body);
+      if (data['success'] == true) {
+        CacheService.cacheBakeries(List<Map<String, dynamic>>.from(data['data']));
+      }
+    } catch (_) {}
+  }
+
+  static List<BakeryAd> _parseBakeryAds(List<dynamic> list) {
+    return list.map((json) => BakeryAd.fromJson(json)).toList();
   }
 
   static Future<bool> createBakeryAd(Map<String, dynamic> adData) async {
@@ -511,7 +599,19 @@ class ApiService {
     int page = 1,
     bool useCache = true,
   }) async {
+    final stopwatch = Stopwatch()..start();
     final canUseCache = useCache && page == 1 && condition == null && location == null && search == null;
+    
+    // اول از کش بخون (سریع)
+    if (canUseCache) {
+      final cached = await CacheService.getEquipment();
+      if (cached != null && cached.isNotEmpty) {
+        _logTiming('کش equipment-ads', stopwatch.elapsedMilliseconds);
+        // در background از سرور آپدیت کن
+        _refreshEquipmentInBackground();
+        return cached;
+      }
+    }
     
     try {
       final params = <String, String>{
@@ -522,27 +622,45 @@ class ApiService {
       };
       
       final uri = Uri.parse('$baseUrl/equipment-ads').replace(queryParameters: params);
-      final response = await http.get(uri);
-      final data = jsonDecode(response.body);
+      final response = await http.get(uri).timeout(_timeout);
+      _logTiming('سرور equipment-ads', stopwatch.elapsedMilliseconds);
+      
+      final data = await BackgroundProcessor.parseJson(response.body);
+      _logTiming('پارس equipment-ads', stopwatch.elapsedMilliseconds);
       
       if (data['success'] == true) {
         final list = List<Map<String, dynamic>>.from(data['data']);
         if (canUseCache) {
-          await CacheService.cacheEquipment(list);
+          CacheService.cacheEquipment(list);
         }
         return list;
       }
       return [];
     } catch (e) {
+      debugPrint('❌ Error fetching equipment ads: $e');
       if (canUseCache) {
         final cached = await CacheService.getEquipment();
         if (cached != null) {
           debugPrint('📦 Using cached equipment');
+          onServerUnavailable?.call('نمایش از حافظه موقت');
           return cached;
         }
       }
+      onServerUnavailable?.call(_getUserFriendlyError(e));
       return [];
     }
+  }
+
+  /// آپدیت تجهیزات در background
+  static Future<void> _refreshEquipmentInBackground() async {
+    try {
+      final uri = Uri.parse('$baseUrl/equipment-ads?page=1');
+      final response = await http.get(uri).timeout(_timeout);
+      final data = await BackgroundProcessor.parseJson(response.body);
+      if (data['success'] == true) {
+        CacheService.cacheEquipment(List<Map<String, dynamic>>.from(data['data']));
+      }
+    } catch (_) {}
   }
 
   static Future<bool> createEquipmentAd(Map<String, dynamic> adData) async {
@@ -736,8 +854,9 @@ class ApiService {
       final response = await http.get(
         Uri.parse('$baseUrl/notifications?page=$page&limit=$limit'),
         headers: _headers,
-      );
-      final data = jsonDecode(response.body);
+      ).timeout(_timeout);
+      // پارس JSON در background
+      final data = await BackgroundProcessor.parseJson(response.body);
       
       if (data['success'] == true) {
         return {
@@ -853,12 +972,13 @@ class ApiService {
         Uri.parse('$baseUrl/chat/conversations'),
         headers: _headers,
       ).timeout(_timeout);
-      final data = jsonDecode(response.body);
+      // پارس JSON در background
+      final data = await BackgroundProcessor.parseJson(response.body);
       
       if (data['success'] == true) {
         final conversations = List<Map<String, dynamic>>.from(data['data']);
-        // کش کردن مکالمات
-        await CacheService.cacheConversations(conversations);
+        // کش کردن مکالمات (بدون await)
+        CacheService.cacheConversations(conversations);
         return conversations;
       }
       return [];
@@ -881,7 +1001,8 @@ class ApiService {
         Uri.parse('$baseUrl/chat/messages/$recipientId?page=$page&limit=$limit'),
         headers: _headers,
       ).timeout(_timeout);
-      final data = jsonDecode(response.body);
+      // پارس JSON در background
+      final data = await BackgroundProcessor.parseJson(response.body);
       
       if (data['success'] == true) {
         var messages = List<Map<String, dynamic>>.from(data['data']);

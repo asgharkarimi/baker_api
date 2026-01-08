@@ -187,9 +187,9 @@ class JobSeekerShimmer extends StatelessWidget {
                   const SizedBox(height: 8),
                   Row(
                     children: const [
-                      SkeletonBox(width: 60, height: 24, radius: 12),
+                      Flexible(child: SkeletonBox(width: 60, height: 24, radius: 12)),
                       SizedBox(width: 8),
-                      SkeletonBox(width: 80, height: 24, radius: 12),
+                      Flexible(child: SkeletonBox(width: 80, height: 24, radius: 12)),
                     ],
                   ),
                   const SizedBox(height: 8),

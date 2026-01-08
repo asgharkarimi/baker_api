@@ -15,7 +15,6 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
-  String _loadingText = 'در حال بارگذاری...';
 
   @override
   void initState() {
@@ -40,16 +39,11 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   }
 
   Future<void> _initializeApp() async {
-    // شروع پیش‌بارگذاری داده‌ها در پس‌زمینه
-    final preloadFuture = PreloadService.preloadAll();
+    // فقط اطلاعات کاربر و سوکت رو لود کن - آگهی‌ها موقع نیاز لود میشن
+    final preloadFuture = PreloadService.preloadUserOnly();
     
-    // حداقل 2 ثانیه صبر کن برای نمایش splash
-    final minDelay = Future.delayed(const Duration(seconds: 2));
-    
-    // آپدیت متن لودینگ
-    if (mounted) {
-      setState(() => _loadingText = 'در حال دریافت اطلاعات...');
-    }
+    // حداقل 1 ثانیه برای نمایش splash (کافیه)
+    final minDelay = Future.delayed(const Duration(milliseconds: 1000));
     
     // صبر کن تا هر دو تموم بشن
     await Future.wait([preloadFuture, minDelay]);
@@ -151,7 +145,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                   ),
                   SizedBox(height: context.responsive.spacing(16)),
                   Text(
-                    _loadingText,
+                    'در حال آماده‌سازی...',
                     style: TextStyle(
                       fontSize: context.responsive.fontSize(14),
                       color: AppTheme.white.withValues(alpha: 0.8),

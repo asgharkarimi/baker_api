@@ -7,7 +7,6 @@ import 'services/cache_service.dart';
 import 'services/notification_manager.dart';
 import 'services/api_service.dart';
 import 'services/media_cache_service.dart';
-import 'services/encryption_service.dart';
 import 'widgets/cached_image.dart';
 
 // کلید گلوبال برای Navigator

@@ -4,6 +4,11 @@ const { Op } = require('sequelize');
 const { JobSeeker, User } = require('../models');
 const { auth } = require('../middleware/auth');
 
+// کش ساده برای کارجوها (5 دقیقه)
+let seekersCache = null;
+let seekersCacheTime = 0;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 دقیقه
+
 // رزومه‌های من - باید قبل از /:id باشه
 router.get('/my/list', auth, async (req, res) => {
   try {
@@ -18,6 +23,16 @@ router.get('/my/list', auth, async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     const { page = 1, limit = 20, location, maxSalary, search } = req.query;
+    
+    // اگه بدون فیلتر و صفحه اول بود، از کش استفاده کن
+    const noFilters = !location && !maxSalary && !search;
+    const isFirstPage = Number(page) === 1;
+    
+    if (noFilters && isFirstPage && seekersCache && (Date.now() - seekersCacheTime < CACHE_DURATION)) {
+      console.log('📦 Using cached job seekers');
+      return res.json(seekersCache);
+    }
+    
     // فقط کارجوهای فعال و تایید شده توسط ادمین
     const where = { isActive: true, isApproved: true };
 
@@ -33,7 +48,16 @@ router.get('/', async (req, res) => {
       limit: Number(limit)
     });
 
-    res.json({ success: true, data: rows, total: count, page: Number(page), pages: Math.ceil(count / limit) });
+    const response = { success: true, data: rows, total: count, page: Number(page), pages: Math.ceil(count / limit) };
+    
+    // کش کردن نتیجه صفحه اول بدون فیلتر
+    if (noFilters && isFirstPage) {
+      seekersCache = response;
+      seekersCacheTime = Date.now();
+      console.log('💾 Cached job seekers');
+    }
+
+    res.json(response);
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

@@ -34,13 +34,13 @@ class PaymentScreen extends StatelessWidget {
                   gradient: LinearGradient(
                     colors: [
                       AppTheme.primaryGreen,
-                      AppTheme.primaryGreen.withOpacity(0.8),
+                      AppTheme.primaryGreen.withValues(alpha: 0.8),
                     ],
                   ),
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: AppTheme.primaryGreen.withOpacity(0.3),
+                      color: AppTheme.primaryGreen.withValues(alpha: 0.3),
                       blurRadius: 20,
                       offset: const Offset(0, 10),
                     ),
@@ -54,7 +54,7 @@ class PaymentScreen extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
+                            color: Colors.white.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: const Icon(
@@ -122,9 +122,9 @@ class PaymentScreen extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
+                  color: Colors.blue.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                  border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   children: [
@@ -208,7 +208,7 @@ class PaymentScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: AppTheme.primaryGreen.withOpacity(0.1),
+              color: AppTheme.primaryGreen.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(

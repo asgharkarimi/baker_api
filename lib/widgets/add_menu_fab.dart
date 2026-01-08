@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
 import '../screens/auth/login_screen.dart';
-import '../screens/payment/payment_screen.dart';
 import '../screens/job_ads/add_job_ad_screen.dart';
 import '../screens/job_seekers/add_job_seeker_profile_screen.dart';
 import '../screens/marketplace/add_equipment_ad_screen.dart';
@@ -232,7 +231,7 @@ class AddMenuFab extends StatelessWidget {
                 width: 50,
                 height: 50,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(

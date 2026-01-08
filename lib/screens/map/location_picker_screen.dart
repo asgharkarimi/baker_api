@@ -15,12 +15,22 @@ class LocationPickerScreen extends StatefulWidget {
 class _LocationPickerScreenState extends State<LocationPickerScreen> {
   late MapController _mapController;
   late LatLng _selectedLocation;
+  bool _isMapReady = false;
 
   @override
   void initState() {
     super.initState();
     _mapController = MapController();
     _selectedLocation = widget.initialLocation ?? LatLng(35.6892, 51.3890); // تهران
+    
+    // بعد از یه تاخیر کوتاه نقشه رو آماده نشون بده
+    Future.delayed(Duration(milliseconds: 500), () {
+      if (mounted) {
+        setState(() {
+          _isMapReady = true;
+        });
+      }
+    });
   }
 
   void _onMapTap(TapPosition tapPosition, LatLng position) {
@@ -51,6 +61,26 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
         ),
         body: Stack(
           children: [
+            if (!_isMapReady)
+              Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      color: AppTheme.primaryGreen,
+                    ),
+                    SizedBox(height: 16),
+                    Text(
+                      'در حال بارگذاری نقشه...',
+                      style: TextStyle(
+                        color: AppTheme.textDark,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            if (_isMapReady)
             FlutterMap(
               mapController: _mapController,
               options: MapOptions(
@@ -63,6 +93,16 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                   urlTemplate: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
                   subdomains: const ['a', 'b', 'c', 'd'],
                   userAgentPackageName: 'com.example.my_bakers_jobapp',
+                  tileBuilder: (context, tileWidget, tile) {
+                    return AnimatedOpacity(
+                      opacity: 1.0,
+                      duration: Duration(milliseconds: 300),
+                      child: tileWidget,
+                    );
+                  },
+                  errorTileCallback: (tile, error, stackTrace) {
+                    // در صورت خطا در لود تایل، بی‌صدا رد شو
+                  },
                 ),
                 MarkerLayer(
                   markers: [
@@ -91,7 +131,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
+                      color: Colors.black.withValues(alpha: 0.1),
                       blurRadius: 10,
                       offset: Offset(0, 2),
                     ),

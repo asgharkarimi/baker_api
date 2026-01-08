@@ -37,7 +37,10 @@ class _JobAdsListScreenState extends State<JobAdsListScreen> with AutomaticKeepA
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    _loadJobAds();
+    // لود داده‌ها با تاخیر برای جلوگیری از هنگ UI
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadJobAds();
+    });
   }
 
   @override

@@ -21,7 +21,10 @@ class _ChatListScreenState extends State<ChatListScreen> {
   @override
   void initState() {
     super.initState();
-    _checkLoginAndLoad();
+    // لود داده‌ها با تاخیر برای جلوگیری از هنگ UI
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkLoginAndLoad();
+    });
   }
 
   Future<void> _checkLoginAndLoad() async {
@@ -151,7 +154,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: AppTheme.primaryGreen.withOpacity(0.1),
+                color: AppTheme.primaryGreen.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(

@@ -84,12 +84,12 @@ class _BakeryDetailScreenState extends State<BakeryDetailScreen> {
   }
 
   void _shareAd() {
-    final priceText = _ad.type == 'sale'
+    final priceText = _ad.type == BakeryAdType.sale
         ? 'قیمت فروش: ${NumberFormatter.formatPrice(_ad.salePrice ?? 0)}'
         : 'رهن: ${NumberFormatter.formatPrice(_ad.rentDeposit ?? 0)} - اجاره: ${NumberFormatter.formatPrice(_ad.monthlyRent ?? 0)}';
     
     final shareText = '''
-🏪 آگهی ${_ad.type == 'sale' ? 'فروش' : 'اجاره'} نانوایی
+🏪 آگهی ${_ad.type == BakeryAdType.sale ? 'فروش' : 'اجاره'} نانوایی
 
 📌 ${_ad.title}
 📍 آدرس: ${_ad.location}

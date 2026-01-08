@@ -27,7 +27,10 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
   @override
   void initState() {
     super.initState();
-    _loadAllBookmarks();
+    // لود داده‌ها با تاخیر برای جلوگیری از هنگ UI
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadAllBookmarks();
+    });
   }
 
   Future<void> _loadAllBookmarks() async {

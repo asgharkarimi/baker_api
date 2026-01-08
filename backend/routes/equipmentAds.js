@@ -4,6 +4,11 @@ const { Op } = require('sequelize');
 const { EquipmentAd, User } = require('../models');
 const { auth } = require('../middleware/auth');
 
+// کش ساده برای آگهی‌ها (5 دقیقه)
+let equipmentCache = null;
+let equipmentCacheTime = 0;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 دقیقه
+
 // آگهی‌های من - باید قبل از /:id باشه
 router.get('/my/list', auth, async (req, res) => {
   try {
@@ -18,6 +23,16 @@ router.get('/my/list', auth, async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     const { page = 1, limit = 20, condition, location, search } = req.query;
+    
+    // اگه بدون فیلتر و صفحه اول بود، از کش استفاده کن
+    const noFilters = !condition && !location && !search;
+    const isFirstPage = Number(page) === 1;
+    
+    if (noFilters && isFirstPage && equipmentCache && (Date.now() - equipmentCacheTime < CACHE_DURATION)) {
+      console.log('📦 Using cached equipment ads');
+      return res.json(equipmentCache);
+    }
+    
     const where = { isActive: true, isApproved: true };
 
     if (condition) where.condition = condition;
@@ -32,7 +47,16 @@ router.get('/', async (req, res) => {
       limit: Number(limit)
     });
 
-    res.json({ success: true, data: rows, total: count, page: Number(page), pages: Math.ceil(count / limit) });
+    const response = { success: true, data: rows, total: count, page: Number(page), pages: Math.ceil(count / limit) };
+    
+    // کش کردن نتیجه صفحه اول بدون فیلتر
+    if (noFilters && isFirstPage) {
+      equipmentCache = response;
+      equipmentCacheTime = Date.now();
+      console.log('💾 Cached equipment ads');
+    }
+
+    res.json(response);
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

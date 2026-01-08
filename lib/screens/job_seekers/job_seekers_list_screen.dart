@@ -36,7 +36,10 @@ class _JobSeekersListScreenState extends State<JobSeekersListScreen> with Automa
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    _loadSeekers();
+    // لود داده‌ها با تاخیر برای جلوگیری از هنگ UI
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadSeekers();
+    });
   }
 
   @override

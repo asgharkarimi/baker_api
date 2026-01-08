@@ -29,7 +29,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
   // فیلترها
   String? _selectedProvince;
   BakeryAdType? _selectedType;
-  RangeValues _priceRange = const RangeValues(0, 50000000000);
+  RangeValues _priceRange = const RangeValues(0, 100); // 0 تا 100 میلیارد (واحد: 100 میلیون)
   RangeValues _flourQuotaRange = const RangeValues(0, 1000);
   bool _filtersApplied = false;
   
@@ -46,15 +46,21 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _loadData();
+    // لود داده‌ها با تاخیر کوتاه برای جلوگیری از هنگ UI
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadData();
+    });
   }
 
   Future<void> _loadData() async {
-    _loadEquipmentAds();
+    // لود جداگانه با تاخیر برای جلوگیری از هنگ
     _loadBakeryAds();
+    await Future.delayed(const Duration(milliseconds: 100));
+    _loadEquipmentAds();
   }
 
   Future<void> _loadEquipmentAds() async {
+    if (!mounted) return;
     setState(() => _isLoadingEquipment = true);
     try {
       final ads = await ApiService.getEquipmentAds();
@@ -65,18 +71,20 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
         });
       }
     } catch (e) {
+      debugPrint('❌ Equipment load error: $e');
       if (mounted) setState(() => _isLoadingEquipment = false);
     }
   }
 
   Future<void> _loadBakeryAds() async {
+    if (!mounted) return;
     setState(() => _isLoadingBakery = true);
     try {
       final ads = await ApiService.getBakeryAds(
         type: _selectedType,
         province: _selectedProvince,
-        minPrice: _priceRange.start > 0 ? _priceRange.start.toInt() : null,
-        maxPrice: _priceRange.end < 50000000000 ? _priceRange.end.toInt() : null,
+        minPrice: _priceRange.start > 0 ? (_priceRange.start * 100000000).toInt() : null,
+        maxPrice: _priceRange.end < 100 ? (_priceRange.end * 100000000).toInt() : null,
         minFlourQuota: _flourQuotaRange.start > 0 ? _flourQuotaRange.start.toInt() : null,
         maxFlourQuota: _flourQuotaRange.end < 1000 ? _flourQuotaRange.end.toInt() : null,
       );
@@ -87,6 +95,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
         });
       }
     } catch (e) {
+      debugPrint('❌ Bakery load error: $e');
       if (mounted) setState(() => _isLoadingBakery = false);
     }
   }
@@ -182,7 +191,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     setState(() {
       _selectedProvince = null;
       _selectedType = null;
-      _priceRange = const RangeValues(0, 50000000000);
+      _priceRange = const RangeValues(0, 100);
       _flourQuotaRange = const RangeValues(0, 1000);
       _filtersApplied = false;
     });
@@ -226,7 +235,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                         setSheetState(() {
                           _selectedProvince = null;
                           _selectedType = null;
-                          _priceRange = const RangeValues(0, 50000000000);
+                          _priceRange = const RangeValues(0, 100);
                           _flourQuotaRange = const RangeValues(0, 1000);
                         });
                       },
@@ -308,20 +317,15 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(_formatPriceShort(_priceRange.start), style: const TextStyle(fontSize: 12)),
-                          Text(_formatPriceShort(_priceRange.end), style: const TextStyle(fontSize: 12)),
+                          Text(_formatPriceShort(_priceRange.start * 100000000), style: const TextStyle(fontSize: 12)),
+                          Text(_formatPriceShort(_priceRange.end * 100000000), style: const TextStyle(fontSize: 12)),
                         ],
                       ),
                       RangeSlider(
                         values: _priceRange,
                         min: 0,
-                        max: 50000000000,
-                        divisions: 100,
+                        max: 100,
                         activeColor: AppTheme.primaryGreen,
-                        labels: RangeLabels(
-                          _formatPriceShort(_priceRange.start),
-                          _formatPriceShort(_priceRange.end),
-                        ),
                         onChanged: (v) => setSheetState(() => _priceRange = v),
                       ),
                       const SizedBox(height: 24),
@@ -340,12 +344,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                         values: _flourQuotaRange,
                         min: 0,
                         max: 1000,
-                        divisions: 100,
                         activeColor: Colors.deepOrange,
-                        labels: RangeLabels(
-                          '${_flourQuotaRange.start.toInt()}',
-                          '${_flourQuotaRange.end.toInt()}',
-                        ),
                         onChanged: (v) => setSheetState(() => _flourQuotaRange = v),
                       ),
                     ],
@@ -440,10 +439,10 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
       ));
     }
     
-    if (_priceRange.start > 0 || _priceRange.end < 50000000000) {
+    if (_priceRange.start > 0 || _priceRange.end < 100) {
       filters.add(_buildActiveFilterChip(
-        'قیمت: ${_formatPriceShort(_priceRange.start)} - ${_formatPriceShort(_priceRange.end)}',
-        () => setState(() { _priceRange = const RangeValues(0, 50000000000); _loadBakeryAds(); }),
+        'قیمت: ${_formatPriceShort(_priceRange.start * 100000000)} - ${_formatPriceShort(_priceRange.end * 100000000)}',
+        () => setState(() { _priceRange = const RangeValues(0, 100); _loadBakeryAds(); }),
       ));
     }
     
@@ -609,122 +608,17 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
         itemCount: _equipmentAds.length,
         itemBuilder: (context, index) {
           final ad = _equipmentAds[index];
-          return Container(
-            margin: EdgeInsets.only(bottom: 16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 15,
-                  offset: Offset(0, 4),
-                ),
-              ],
-            ),
-            child: InkWell(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => EquipmentDetailScreen(ad: ad),
-                  ),
-                );
-              },
-              borderRadius: BorderRadius.circular(16),
-              child: Padding(
-                padding: EdgeInsets.all(12),
-                child: Row(
-                  children: [
-                    // تصویر دستگاه
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: ad.images.isNotEmpty
-                          ? Image.network(
-                              ad.images.first.startsWith('http')
-                                  ? ad.images.first
-                                  : '${ApiService.serverUrl}${ad.images.first}',
-                              width: 100,
-                              height: 100,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
-                                width: 100,
-                                height: 100,
-                                decoration: BoxDecoration(
-                                  color: Colors.teal.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Icon(Icons.build, color: Colors.teal, size: 40),
-                              ),
-                            )
-                          : Container(
-                              width: 100,
-                              height: 100,
-                              decoration: BoxDecoration(
-                                color: Colors.teal.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Icon(Icons.build, color: Colors.teal, size: 40),
-                            ),
-                    ),
-                    SizedBox(width: 12),
-                    // اطلاعات
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            ad.title,
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: AppTheme.textDark,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          SizedBox(height: 8),
-                          Container(
-                            padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.teal.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              NumberFormatter.formatPrice(ad.price),
-                              style: TextStyle(
-                                color: Colors.teal,
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          SizedBox(height: 6),
-                          Row(
-                            children: [
-                              Icon(Icons.location_on_outlined, size: 16, color: AppTheme.textGrey),
-                              SizedBox(width: 4),
-                              Expanded(
-                                child: Text(
-                                  ad.provinceOrLocation,
-                                  style: TextStyle(
-                                    color: AppTheme.textGrey,
-                                    fontSize: 14,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    Icon(Icons.arrow_forward_ios, size: 16, color: AppTheme.textGrey),
-                  ],
-                ),
-              ),
-            ),
+          return _buildNewStyleCard(
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => EquipmentDetailScreen(ad: ad))),
+            imageUrl: ad.images.isNotEmpty 
+                ? (ad.images.first.startsWith('http') ? ad.images.first : '${ApiService.serverUrl}${ad.images.first}')
+                : null,
+            title: ad.title,
+            condition: ad.condition == 'new' ? 'نو' : 'کارکرده',
+            price: NumberFormatter.formatPrice(ad.price),
+            location: ad.provinceOrLocation,
+            badgeText: ad.condition == 'new' ? '✨ نو' : '🔧 کارکرده',
+            badgeColor: ad.condition == 'new' ? Colors.green : Colors.orange,
           );
         },
       ),
@@ -756,15 +650,63 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: _bakeryAds.length,
-        itemBuilder: (context, index) => _buildBakeryCard(_bakeryAds[index]),
+        itemBuilder: (context, index) {
+          final ad = _bakeryAds[index];
+          final isSale = ad.type == BakeryAdType.sale;
+          return _buildNewStyleCard(
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => BakeryDetailScreen(ad: ad))),
+            imageUrl: ad.images.isNotEmpty 
+                ? (ad.images.first.startsWith('http') ? ad.images.first : '${ApiService.serverUrl}${ad.images.first}')
+                : null,
+            title: ad.title,
+            condition: isSale ? 'فروش' : 'رهن و اجاره',
+            price: isSale 
+                ? NumberFormatter.formatPrice(ad.salePrice ?? 0)
+                : 'رهن: ${NumberFormatter.formatPrice(ad.rentDeposit ?? 0)}',
+            location: ad.location.split('،').first.trim(),
+            badgeText: isSale ? '🏷️ فروش' : '🔑 رهن و اجاره',
+            badgeColor: isSale ? Colors.blue : Colors.purple,
+            extraInfo: _buildBakeryExtraInfo(ad),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildBakeryCard(BakeryAd ad) {
-    final isSale = ad.type == BakeryAdType.sale;
-    final color = isSale ? Colors.blue : Colors.purple;
+  Widget? _buildBakeryExtraInfo(BakeryAd ad) {
+    if ((ad.flourQuota == null || ad.flourQuota == 0) && 
+        (ad.breadPrice == null || ad.breadPrice == 0)) {
+      return null;
+    }
+    return Row(
+      children: [
+        if (ad.flourQuota != null && ad.flourQuota! > 0) ...[
+          Icon(Icons.inventory_2, size: 14, color: Colors.deepOrange),
+          const SizedBox(width: 4),
+          Text('${ad.flourQuota} کیسه', style: TextStyle(color: Colors.deepOrange, fontSize: 12)),
+          const SizedBox(width: 12),
+        ],
+        if (ad.breadPrice != null && ad.breadPrice! > 0) ...[
+          Icon(Icons.bakery_dining, size: 14, color: Colors.brown),
+          const SizedBox(width: 4),
+          Text('${ad.breadPrice} تومان', style: TextStyle(color: Colors.brown, fontSize: 12)),
+        ],
+      ],
+    );
+  }
 
+  /// کارت با طراحی جدید - تصویر سمت چپ، اطلاعات سمت راست
+  Widget _buildNewStyleCard({
+    required VoidCallback onTap,
+    String? imageUrl,
+    required String title,
+    required String condition,
+    required String price,
+    required String location,
+    required String badgeText,
+    required Color badgeColor,
+    Widget? extraInfo,
+  }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -772,138 +714,130 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 15,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
       child: InkWell(
-        onTap: () => Navigator.push(
-            context, MaterialPageRoute(builder: (_) => BakeryDetailScreen(ad: ad))),
+        onTap: onTap,
         borderRadius: BorderRadius.circular(16),
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // تصویر نانوایی
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: ad.images.isNotEmpty
-                    ? Image.network(
-                        ad.images.first.startsWith('http')
-                            ? ad.images.first
-                            : '${ApiService.serverUrl}${ad.images.first}',
-                        width: 100,
-                        height: 100,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
-                          width: 100,
-                          height: 100,
-                          decoration: BoxDecoration(
-                            color: color.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(12),
+              // تصویر سمت چپ با بج
+              Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: imageUrl != null
+                        ? Image.network(
+                            imageUrl,
+                            width: 120,
+                            height: 100,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => _buildImagePlaceholder(badgeColor),
+                          )
+                        : _buildImagePlaceholder(badgeColor),
+                  ),
+                  // بج روی تصویر
+                  Positioned(
+                    top: 6,
+                    right: 6,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.95),
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 4,
                           ),
-                          child: Icon(Icons.store, color: color, size: 40),
-                        ),
-                      )
-                    : Container(
-                        width: 100,
-                        height: 100,
-                        decoration: BoxDecoration(
-                          color: color.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(Icons.store, color: color, size: 40),
+                        ],
                       ),
+                      child: Text(
+                        badgeText,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: badgeColor,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 12),
-              // اطلاعات
+              const SizedBox(width: 14),
+              // اطلاعات سمت راست
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // نوع آگهی
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        isSale ? '🏷️ فروش' : '🔑 رهن و اجاره',
-                        style: TextStyle(
-                            color: color, fontSize: 11, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
                     // عنوان
                     Text(
-                      ad.title,
+                      title,
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
+                        color: Colors.black87,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
+                    // وضعیت
+                    Text(
+                      condition,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
                     // قیمت
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
+                    Text(
+                      price,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: badgeColor,
                       ),
-                      child: Text(
-                        isSale
-                            ? NumberFormatter.formatPrice(ad.salePrice ?? 0)
-                            : 'رهن: ${NumberFormatter.formatPrice(ad.rentDeposit ?? 0)}',
-                        style: TextStyle(
-                          color: color,
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
+                    ),
+                    if (extraInfo != null) ...[
+                      const SizedBox(height: 6),
+                      extraInfo,
+                    ],
+                    const SizedBox(height: 8),
+                    // موقعیت
+                    Row(
+                      children: [
+                        Text(
+                          '$condition | ',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: badgeColor,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    // سهمیه آرد و قیمت نان
-                    Row(
-                      children: [
-                        if (ad.flourQuota != null && ad.flourQuota! > 0) ...[
-                          Icon(Icons.inventory_2, size: 14, color: Colors.deepOrange),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${ad.flourQuota} کیسه',
-                            style: TextStyle(color: Colors.deepOrange, fontSize: 12),
+                        Text(
+                          'ارسال از ',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade500,
                           ),
-                          const SizedBox(width: 12),
-                        ],
-                        if (ad.breadPrice != null && ad.breadPrice! > 0) ...[
-                          Icon(Icons.bakery_dining, size: 14, color: Colors.brown),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${ad.breadPrice} تومان',
-                            style: TextStyle(color: Colors.brown, fontSize: 12),
-                          ),
-                        ],
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    // استان
-                    Row(
-                      children: [
-                        Icon(Icons.location_on_outlined,
-                            size: 16, color: AppTheme.textGrey),
-                        const SizedBox(width: 4),
-                        Expanded(
+                        ),
+                        Flexible(
                           child: Text(
-                            ad.location.split('،').first.trim(),
+                            location,
                             style: TextStyle(
-                              color: AppTheme.textGrey,
-                              fontSize: 14,
+                              fontSize: 12,
+                              color: Colors.red.shade400,
+                              fontWeight: FontWeight.w500,
                             ),
-                            maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -912,7 +846,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                   ],
                 ),
               ),
-              Icon(Icons.arrow_forward_ios, size: 16, color: AppTheme.textGrey),
             ],
           ),
         ),
@@ -920,43 +853,16 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     );
   }
 
-  Widget _buildPlaceholder(Color color) {
+  Widget _buildImagePlaceholder(Color color) {
     return Container(
-      height: 160,
-      width: double.infinity,
+      width: 120,
+      height: 100,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [color.withValues(alpha: 0.3), color.withValues(alpha: 0.1)],
-        ),
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
       ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.store, size: 50, color: color.withValues(alpha: 0.5)),
-          const SizedBox(height: 8),
-          Text('بدون تصویر', style: TextStyle(color: color.withValues(alpha: 0.5), fontSize: 12)),
-        ],
-      ),
+      child: Icon(Icons.image_outlined, color: color.withValues(alpha: 0.5), size: 40),
     );
   }
 
-  Widget _buildInfoChip(IconData icon, String text, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 4),
-          Text(text, style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w500)),
-        ],
-      ),
-    );
-  }
 }

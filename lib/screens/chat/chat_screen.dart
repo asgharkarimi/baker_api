@@ -1454,7 +1454,7 @@ class _MessageBubble extends StatelessWidget {
               bottomLeft: isMe ? const Radius.circular(16) : const Radius.circular(4),
               bottomRight: isMe ? const Radius.circular(4) : const Radius.circular(16),
             ),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5, offset: const Offset(0, 2))],
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 5, offset: const Offset(0, 2))],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1537,7 +1537,7 @@ class _MessageBubble extends StatelessWidget {
       margin: const EdgeInsets.fromLTRB(8, 8, 8, 0),
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: isMe ? Colors.white.withOpacity(0.2) : Colors.grey.shade200,
+        color: isMe ? Colors.white.withValues(alpha: 0.2) : Colors.grey.shade200,
         borderRadius: BorderRadius.circular(8),
         border: Border(right: BorderSide(color: isMe ? Colors.white : AppTheme.primaryGreen, width: 3)),
       ),

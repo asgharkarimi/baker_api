@@ -4,6 +4,11 @@ const { Op } = require('sequelize');
 const { BakeryAd, User } = require('../models');
 const { auth } = require('../middleware/auth');
 
+// کش ساده برای آگهی‌ها (5 دقیقه)
+let bakeryCache = null;
+let bakeryCacheTime = 0;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 دقیقه
+
 // آگهی‌های من - باید قبل از /:id باشه
 router.get('/my/list', auth, async (req, res) => {
   try {
@@ -29,9 +34,17 @@ router.get('/debug/all', async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     const { page = 1, limit = 20, type, location, search, province, minPrice, maxPrice, minFlourQuota, maxFlourQuota } = req.query;
+    
+    // اگه بدون فیلتر و صفحه اول بود، از کش استفاده کن
+    const noFilters = !type && !location && !search && !province && !minPrice && !maxPrice && !minFlourQuota && !maxFlourQuota;
+    const isFirstPage = Number(page) === 1;
+    
+    if (noFilters && isFirstPage && bakeryCache && (Date.now() - bakeryCacheTime < CACHE_DURATION)) {
+      console.log('📦 Using cached bakery ads');
+      return res.json(bakeryCache);
+    }
+    
     const where = { isActive: true, isApproved: true };
-
-    console.log('📋 Fetching bakery ads with where:', where);
 
     if (type) where.type = type;
     if (location) where.location = { [Op.like]: `%${location}%` };
@@ -60,9 +73,16 @@ router.get('/', async (req, res) => {
       limit: Number(limit)
     });
 
-    console.log('📋 Found', count, 'bakery ads');
+    const response = { success: true, data: rows, total: count, page: Number(page), pages: Math.ceil(count / limit) };
+    
+    // کش کردن نتیجه صفحه اول بدون فیلتر
+    if (noFilters && isFirstPage) {
+      bakeryCache = response;
+      bakeryCacheTime = Date.now();
+      console.log('💾 Cached bakery ads');
+    }
 
-    res.json({ success: true, data: rows, total: count, page: Number(page), pages: Math.ceil(count / limit) });
+    res.json(response);
   } catch (error) {
     console.error('❌ Error:', error);
     res.status(500).json({ success: false, message: error.message });

@@ -3,91 +3,51 @@ import 'api_service.dart';
 import 'encryption_service.dart';
 import 'socket_service.dart';
 
-/// سرویس پیش‌بارگذاری داده‌ها در پس‌زمینه
+/// سرویس آماده‌سازی اولیه برنامه
 class PreloadService {
   static bool _isPreloading = false;
   static bool _isPreloaded = false;
 
-  /// آیا داده‌ها پیش‌بارگذاری شدن؟
+  /// آیا آماده‌سازی انجام شده؟
   static bool get isPreloaded => _isPreloaded;
 
-  /// پیش‌بارگذاری همه داده‌های اصلی به صورت موازی
-  static Future<void> preloadAll() async {
-    if (_isPreloading || _isPreloaded) return;
+  /// فقط اطلاعات کاربر و سوکت - آگهی‌ها موقع نیاز لود میشن
+  static Future<void> preloadUserOnly() async {
+    if (_isPreloading) return;
     _isPreloading = true;
 
-    debugPrint('🚀 شروع پیش‌بارگذاری داده‌ها...');
+    debugPrint('🚀 آماده‌سازی کاربر...');
     final stopwatch = Stopwatch()..start();
 
     try {
-      // اول اطلاعات کاربر رو بگیر (برای رمزنگاری و سوکت)
       await _preloadUserData();
-      
-      // بعد بقیه داده‌ها رو موازی بگیر
-      await Future.wait([
-        _preloadJobAds(),
-        _preloadJobSeekers(),
-        _preloadBakeries(),
-        _preloadEquipment(),
-      ]);
-
       _isPreloaded = true;
-      debugPrint('✅ پیش‌بارگذاری کامل شد در ${stopwatch.elapsedMilliseconds}ms');
+      debugPrint('✅ آماده‌سازی کامل شد در ${stopwatch.elapsedMilliseconds}ms');
     } catch (e) {
-      debugPrint('⚠️ خطا در پیش‌بارگذاری: $e');
+      debugPrint('⚠️ خطا در آماده‌سازی: $e');
     } finally {
       _isPreloading = false;
       stopwatch.stop();
     }
   }
 
-  /// پیش‌بارگذاری آگهی‌های شغلی
-  static Future<void> _preloadJobAds() async {
-    try {
-      final ads = await ApiService.getJobAds(page: 1, useCache: true);
-      debugPrint('📦 ${ads.length} آگهی شغلی بارگذاری شد');
-    } catch (e) {
-      debugPrint('❌ خطا در بارگذاری آگهی‌های شغلی: $e');
-    }
+  /// برای سازگاری با کدهای قبلی
+  static Future<void> preloadAll() async {
+    await preloadUserOnly();
   }
 
-  /// پیش‌بارگذاری کارجویان
-  static Future<void> _preloadJobSeekers() async {
-    try {
-      final seekers = await ApiService.getJobSeekers(page: 1, useCache: true);
-      debugPrint('📦 ${seekers.length} کارجو بارگذاری شد');
-    } catch (e) {
-      debugPrint('❌ خطا در بارگذاری کارجویان: $e');
-    }
-  }
-
-  /// پیش‌بارگذاری نانوایی‌ها
-  static Future<void> _preloadBakeries() async {
-    try {
-      final bakeries = await ApiService.getBakeryAds(page: 1, useCache: true);
-      debugPrint('📦 ${bakeries.length} نانوایی بارگذاری شد');
-    } catch (e) {
-      debugPrint('❌ خطا در بارگذاری نانوایی‌ها: $e');
-    }
-  }
-
-  /// پیش‌بارگذاری تجهیزات
-  static Future<void> _preloadEquipment() async {
-    try {
-      final equipment = await ApiService.getEquipmentAds(page: 1, useCache: true);
-      debugPrint('📦 ${equipment.length} تجهیزات بارگذاری شد');
-    } catch (e) {
-      debugPrint('❌ خطا در بارگذاری تجهیزات: $e');
-    }
-  }
-
-  /// پیش‌بارگذاری اطلاعات کاربر و اتصال سوکت
+  /// آماده‌سازی اطلاعات کاربر و اتصال سوکت
   static Future<void> _preloadUserData() async {
     try {
+      final stopwatch = Stopwatch()..start();
+      
       final isLoggedIn = await ApiService.isLoggedIn();
+      debugPrint('⏱️ چک لاگین: ${stopwatch.elapsedMilliseconds}ms');
+      
       if (isLoggedIn) {
         // گرفتن userId
         final userId = await ApiService.getCurrentUserId();
+        debugPrint('⏱️ گرفتن userId: ${stopwatch.elapsedMilliseconds}ms');
         
         if (userId != null) {
           // تنظیم برای رمزنگاری
@@ -96,19 +56,21 @@ class PreloadService {
           // اتصال سوکت برای دریافت پیام‌های realtime
           SocketService.connect(userId);
           
-          debugPrint('📦 کاربر $userId آماده شد (رمزنگاری + سوکت)');
+          debugPrint('📦 کاربر $userId آماده شد');
         }
         
-        // گرفتن اطلاعات کاربر
-        await ApiService.getCurrentUser();
-        debugPrint('📦 اطلاعات کاربر بارگذاری شد');
+        // گرفتن اطلاعات کاربر - این میتونه کند باشه
+        ApiService.getCurrentUser(); // بدون await - در background
+        debugPrint('⏱️ کل آماده‌سازی: ${stopwatch.elapsedMilliseconds}ms');
       }
+      
+      stopwatch.stop();
     } catch (e) {
-      debugPrint('❌ خطا در بارگذاری اطلاعات کاربر: $e');
+      debugPrint('❌ خطا در آماده‌سازی کاربر: $e');
     }
   }
 
-  /// ریست کردن وضعیت (برای تست)
+  /// ریست کردن وضعیت
   static void reset() {
     _isPreloaded = false;
     _isPreloading = false;
